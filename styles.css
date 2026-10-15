@@ -1690,7 +1690,7 @@ html.usos2-plan-page[data-usos-modern="enabled"] usos-timetable {
 html[data-usos-modern="enabled"] usos-timetable:not([mini]) > div,
 html.usos2-plan-page[data-usos-modern="enabled"] usos-timetable > div {
   flex: 1 1 0% !important;
-  min-width: 140px !important;
+  min-width: 0 !important;
   max-width: none !important;
   width: auto !important;
   box-sizing: border-box !important;
@@ -1891,9 +1891,9 @@ html[data-usos-modern="enabled"] usos-timetable:not([mini]) timetable-entry [slo
   text-overflow: ellipsis !important;
 }
 
-/* Ukrywanie szczegółów na mini-planach pulpitu */
-usos-timetable[mini] .usos2-entry-details {
-  display: none !important;
+/* Szczegóły wpisów są w pełni czytelne */
+.usos2-entry-details {
+  display: flex !important;
 }
 
 
@@ -3284,115 +3284,670 @@ html[data-usos-modern="enabled"] .usos-sched-plan-container > a {
 
 /* Wymuszenie 100% szerokości, elastyczności i powiększenia planu zajęć */
 html[data-usos-modern="enabled"] .usos-home-schedule-widget usos-timetable,
-html[data-usos-modern="enabled"] usos-timetable[mini] {
+html[data-usos-modern="enabled"] usos-timetable.usos-calendar-modern {
   width: 100% !important;
   max-width: none !important;
   display: flex !important;
   flex-direction: row !important;
-  height: clamp(520px, 58vh, 640px) !important;
-  min-height: 520px !important;
-  padding: 0.85rem !important;
-  background: var(--bg-input) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 0.85rem 1rem !important;
+  background: var(--bg-card) !important;
   border: 1px solid var(--border-default) !important;
-  border-radius: var(--radius-lg) !important;
+  border-radius: var(--radius-xl) !important;
   box-sizing: border-box !important;
-  gap: 6px !important;
+  gap: 8px !important;
   overflow: visible !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
-/* Kolumny dni w planie na pulpicie */
+/* Kolumny dni w planie zajęć */
 html[data-usos-modern="enabled"] .usos-home-schedule-widget usos-timetable > div,
-html[data-usos-modern="enabled"] usos-timetable[mini] > div {
+html[data-usos-modern="enabled"] usos-timetable.usos-calendar-modern > div {
+  box-sizing: border-box !important;
+  height: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
   flex: 1 1 0% !important;
   min-width: 0 !important;
   max-width: none !important;
   width: auto !important;
+  border-left: 1px solid var(--day-divider, rgba(255, 255, 255, 0.08)) !important;
+  padding: 0 4px !important;
+}
+
+html[data-usos-modern="enabled"] .usos-home-schedule-widget usos-timetable > div:first-child,
+html[data-usos-modern="enabled"] usos-timetable.usos-calendar-modern > div:first-child {
+  border-left: none !important;
+}
+
+/* Nowoczesne nagłówki dni (Poniedziałek, Wtorek...) */
+.usos-cal-day-header {
+  height: 40px !important;
+  margin-bottom: 8px !important;
+  padding: 4px 6px !important;
   display: flex !important;
   flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: var(--bg-muted) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-md) !important;
   box-sizing: border-box !important;
-  height: 100% !important;
+  transition: all 0.2s ease !important;
+  user-select: none !important;
 }
 
-/* Oś godzin (7:00, 8:00, ... 19:00) */
-html[data-usos-modern="enabled"] .usos-home-schedule-widget usos-timetable > div:first-child,
-html[data-usos-modern="enabled"] usos-timetable[mini] > div:first-child {
-  flex: 0 0 42px !important;
-  width: 42px !important;
-  min-width: 42px !important;
-  max-width: 42px !important;
-  border: none !important;
-  padding: 0 !important;
-}
-
-/* Kolumny poniedziałek - piątek z ładnym separatorem */
-html[data-usos-modern="enabled"] .usos-home-schedule-widget usos-timetable > div:not(:first-child),
-html[data-usos-modern="enabled"] usos-timetable[mini] > div:not(:first-child) {
-  border-left: 1px solid var(--day-divider, rgba(255, 255, 255, 0.08)) !important;
-  padding-left: 6px !important;
-  padding-right: 2px !important;
-}
-
-/* Nagłówek dnia (PN, WT, ŚR, CZ, PT) – wyraźny i estetyczny */
-html[data-usos-modern="enabled"] .usos-home-schedule-widget usos-timetable > div > div:first-child,
-html[data-usos-modern="enabled"] usos-timetable[mini] > div > div:first-child {
+.usos-cal-day-header-top {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
   font-size: 0.8125rem !important;
   font-weight: 750 !important;
-  text-align: center !important;
-  background: var(--bg-muted) !important;
   color: var(--text-main) !important;
-  padding: 7px 4px !important;
-  border-radius: 6px !important;
-  margin-bottom: 0.5rem !important;
-  letter-spacing: 0.03em !important;
-  border: 1px solid var(--border-default) !important;
+  line-height: 1.2 !important;
 }
 
-/* Kontener siatki każdego dnia */
+.usos-cal-day-header .usos-cal-day-short {
+  display: none !important;
+}
+
+.usos-cal-day-date {
+  font-size: 0.68rem !important;
+  font-weight: 500 !important;
+  color: var(--text-muted) !important;
+  line-height: 1 !important;
+}
+
+/* Wyróżnienie dzisiejszego dnia */
+.usos-cal-day-header.is-today {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.2) !important;
+}
+
+.usos-cal-day-header.is-today .usos-cal-day-top,
+.usos-cal-day-header.is-today .usos-cal-day-full {
+  color: #60a5fa !important;
+}
+
+.usos-cal-today-badge {
+  font-size: 0.62rem !important;
+  font-weight: 800 !important;
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  letter-spacing: 0.05em !important;
+  line-height: 1.1 !important;
+}
+
+/* Siatka timetable-day */
 html[data-usos-modern="enabled"] .usos-home-schedule-widget timetable-day,
-html[data-usos-modern="enabled"] usos-timetable[mini] timetable-day {
+html[data-usos-modern="enabled"] timetable-day.usos-cal-day-grid {
   width: 100% !important;
   min-width: 0 !important;
   max-width: none !important;
-  height: 100% !important;
   position: relative !important;
-  display: grid !important;
   box-sizing: border-box !important;
 }
 
-/* Kafelki zajęć w harmonogramie na pulpicie – powiększone i czytelne */
+/* Wskaźnik bieżącej godziny (czerwona linia z kropką) */
+.usos-cal-current-time-line {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 2px !important;
+  background: #ef4444 !important;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6) !important;
+  z-index: 15 !important;
+  pointer-events: none !important;
+}
+
+.usos-cal-time-dot {
+  position: absolute !important;
+  left: -4px !important;
+  top: -4px !important;
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background: #ef4444 !important;
+  box-shadow: 0 0 6px #ef4444 !important;
+}
+
+/* Nowoczesne kafelki zajęć w kalendarzu */
 html[data-usos-modern="enabled"] .usos-home-schedule-widget timetable-entry,
-html[data-usos-modern="enabled"] usos-timetable[mini] timetable-entry {
+html[data-usos-modern="enabled"] timetable-entry {
   display: flex !important;
   flex-direction: column !important;
-  justify-content: center !important;
-  align-items: center !important;
-  text-align: center !important;
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+  text-align: left !important;
   border-radius: 8px !important;
-  box-shadow: var(--shadow-sm) !important;
-  font-size: 0.825rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.02em !important;
-  padding: 5px 6px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  padding: 6px 8px !important;
   box-sizing: border-box !important;
   cursor: pointer !important;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease !important;
-  z-index: 1 !important;
+  position: relative !important;
+  z-index: 5 !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-default) !important;
+  border-left-width: 4px !important;
 }
 
 html[data-usos-modern="enabled"] .usos-home-schedule-widget timetable-entry:hover,
-html[data-usos-modern="enabled"] usos-timetable[mini] timetable-entry:hover {
-  transform: translateY(-2px) scale(1.02) !important;
-  box-shadow: var(--shadow-md) !important;
-  z-index: 20 !important;
+html[data-usos-modern="enabled"] timetable-entry:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 20px -2px rgba(0, 0, 0, 0.45) !important;
+  z-index: 25 !important;
 }
 
-.usos-mini-time-badge {
-  display: block !important;
-  font-size: 0.7rem !important;
-  font-weight: 500 !important;
-  opacity: 0.85 !important;
+/* Wewnętrzny kontener kafelka zajęć */
+.usos-entry-card-wrap {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  width: 100% !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.usos-entry-card-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 4px !important;
+  flex-wrap: nowrap !important;
+}
+
+.usos-entry-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  font-size: 0.65rem !important;
+  font-weight: 800 !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  line-height: 1.2 !important;
+  flex-shrink: 0 !important;
+}
+
+.usos-entry-badge.badge-wyklad { background: rgba(168, 85, 247, 0.25) !important; color: #d8b4fe !important; }
+.usos-entry-badge.badge-cwiczenia { background: rgba(14, 165, 233, 0.25) !important; color: #7dd3fc !important; }
+.usos-entry-badge.badge-lab { background: rgba(16, 185, 129, 0.25) !important; color: #6ee7b7 !important; }
+.usos-entry-badge.badge-proj { background: rgba(245, 158, 11, 0.25) !important; color: #fde047 !important; }
+.usos-entry-badge.badge-lektorat { background: rgba(6, 182, 212, 0.25) !important; color: #67e8f9 !important; }
+.usos-entry-badge.badge-sem { background: rgba(244, 63, 94, 0.25) !important; color: #fda4af !important; }
+
+.usos-entry-time {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  font-size: 0.70rem !important;
+  font-weight: 700 !important;
+  opacity: 1 !important;
+  font-variant-numeric: tabular-nums !important;
+  white-space: nowrap !important;
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="light"] .usos-entry-time,
+body[data-theme="light"] .usos-entry-time {
+  color: #334155 !important;
+}
+
+.usos-entry-dur {
+  font-size: 0.62rem !important;
+  opacity: 0.75 !important;
+  white-space: nowrap !important;
+}
+
+.usos-entry-title {
+  font-size: 0.82rem !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+  color: #ffffff !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  word-break: break-word !important;
   margin-top: 2px !important;
-  letter-spacing: 0.01em !important;
+  margin-bottom: 2px !important;
+}
+
+html[data-theme="light"] .usos-entry-title,
+body[data-theme="light"] .usos-entry-title {
+  color: #0f172a !important;
+}
+
+html[data-theme="dark"] .usos-entry-title,
+body[data-theme="dark"] .usos-entry-title {
+  color: #f8fafc !important;
+}
+
+.usos-entry-meta {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  flex-wrap: wrap !important;
+  margin-top: auto !important;
+  font-size: 0.68rem !important;
+  opacity: 1 !important;
+}
+
+.usos-entry-meta-item {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
+}
+
+.usos-entry-meta-item svg {
+  flex-shrink: 0 !important;
+}
+
+.usos-entry-room {
+  font-weight: 750 !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.16) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+}
+
+html[data-theme="light"] .usos-entry-room,
+body[data-theme="light"] .usos-entry-room {
+  color: #0369a1 !important;
+  background: rgba(2, 132, 199, 0.12) !important;
+  border-color: rgba(2, 132, 199, 0.25) !important;
+}
+
+/* Ukrycie starych nieprzetworzonych elementów wewnątrz timetable-entry */
+html[data-usos-modern="enabled"] .usos-home-schedule-widget timetable-entry > *:not(.usos-entry-card-wrap):not(.usos-entry-hide-btn) {
+  display: none !important;
+}
+
+/* ==========================================================================
+   21. KARTA MOTYWACYJNA STUDENTA (#usos-motivation-card) & KOCI TOWARZYSZE
+   ========================================================================== */
+.usos-motivation-card {
+  position: relative !important;
+  overflow: hidden !important;
+  border-left: 4px solid #3b82f6 !important;
+  min-height: 310px !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06) !important;
+}
+
+.usos-motivation-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0.9rem 1.35rem !important;
+  border-bottom: 1px solid var(--border-default) !important;
+  flex-wrap: wrap !important;
+  gap: 0.5rem !important;
+}
+
+.usos-motivation-icon-wrap {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #3b82f6 !important;
+  flex-shrink: 0 !important;
+}
+
+.usos-motivation-chip {
+  font-size: 0.68rem !important;
+  font-weight: 750 !important;
+  background: rgba(59, 130, 246, 0.12) !important;
+  color: #3b82f6 !important;
+  padding: 2px 8px !important;
+  border-radius: 9999px !important;
+  border: 1px solid rgba(59, 130, 246, 0.25) !important;
+  letter-spacing: 0.02em !important;
+}
+
+.usos-motivation-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  flex-wrap: wrap !important;
+}
+
+.usos-btn-cat-switch {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  padding: 0.35rem 0.7rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  color: #d97706 !important;
+  background: rgba(245, 158, 11, 0.12) !important;
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.usos-btn-cat-switch:hover {
+  background: rgba(245, 158, 11, 0.22) !important;
+  color: #b45309 !important;
+  border-color: #f59e0b !important;
+  transform: translateY(-1px) !important;
+}
+
+.usos-btn-cat-switch.is-clicking {
+  transform: scale(0.96) !important;
+}
+
+.usos-cat-btn-icon {
+  font-size: 0.9rem !important;
+}
+
+.usos-btn-quote-copy,
+.usos-btn-quote-refresh {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  padding: 0.35rem 0.65rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  color: var(--text-muted) !important;
+  background: var(--bg-muted) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.usos-btn-quote-copy:hover,
+.usos-btn-quote-refresh:hover {
+  background: var(--bg-card-hover) !important;
+  color: var(--text-main) !important;
+  border-color: var(--primary) !important;
+}
+
+.usos-btn-quote-copy.copied {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+  border-color: #10b981 !important;
+}
+
+.usos-btn-quote-refresh.is-spinning .usos-icon-refresh {
+  transform: rotate(360deg) !important;
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.usos-motivation-body {
+  padding: 1.25rem 1.45rem !important;
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.15rem !important;
+}
+
+/* Sekcja Kociego Towarzysza */
+.usos-cat-companion-box {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1.25rem !important;
+  padding: 1rem 1.25rem !important;
+  background: rgba(59, 130, 246, 0.05) !important;
+  border: 1px solid rgba(59, 130, 246, 0.16) !important;
+  border-radius: 14px !important;
+  position: relative !important;
+  transition: all 0.2s ease !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.usos-cat-companion-box:hover {
+  background: rgba(59, 130, 246, 0.08) !important;
+  border-color: rgba(59, 130, 246, 0.28) !important;
+}
+
+.usos-cat-media-wrap {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  flex-shrink: 0 !important;
+  cursor: pointer !important;
+}
+
+.usos-cat-gif {
+  width: 120px !important;
+  height: 120px !important;
+  object-fit: cover !important;
+  border-radius: 16px !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2) !important;
+  border: 2px solid rgba(255, 255, 255, 0.6) !important;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.usos-cat-media-wrap:hover .usos-cat-gif {
+  transform: scale(1.08) rotate(-2deg) !important;
+}
+
+.usos-cat-svg-fallback {
+  width: 120px !important;
+  height: 120px !important;
+  border-radius: 16px !important;
+  background: #fef3c7 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15) !important;
+  border: 2px solid #f59e0b !important;
+}
+
+.usos-cat-name-chip {
+  font-size: 0.72rem !important;
+  font-weight: 750 !important;
+  color: var(--text-main) !important;
+  background: var(--bg-card) !important;
+  padding: 2px 8px !important;
+  border-radius: 9999px !important;
+  border: 1px solid var(--border-default) !important;
+  white-space: nowrap !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+.usos-cat-speech-bubble {
+  flex: 1 !important;
+  position: relative !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: 12px !important;
+  padding: 0.85rem 1.15rem !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+.usos-cat-speech-bubble::before {
+  content: "" !important;
+  position: absolute !important;
+  left: -8px !important;
+  top: 50% !important;
+  transform: translateY(-50%) rotate(45deg) !important;
+  width: 14px !important;
+  height: 14px !important;
+  background: var(--bg-card) !important;
+  border-left: 1px solid var(--border-default) !important;
+  border-bottom: 1px solid var(--border-default) !important;
+}
+
+.usos-cat-speech-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 0.35rem !important;
+}
+
+.usos-cat-role-badge {
+  font-size: 0.68rem !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: #3b82f6 !important;
+  background: rgba(59, 130, 246, 0.1) !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+}
+
+.usos-cat-sparkle {
+  font-size: 0.85rem !important;
+}
+
+.usos-cat-message {
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  color: var(--text-main) !important;
+  line-height: 1.45 !important;
+  margin: 0 !important;
+}
+
+/* Sekcja z cytatem motywacyjnym */
+.usos-quote-decor {
+  position: absolute !important;
+  top: 160px !important;
+  left: 16px !important;
+  font-size: 5rem !important;
+  font-family: Georgia, serif !important;
+  line-height: 1 !important;
+  color: var(--primary) !important;
+  opacity: 0.15 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+.usos-quote-inner {
+  position: relative !important;
+  z-index: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.85rem !important;
+  transition: opacity 0.15s ease, transform 0.15s ease !important;
+  padding-left: 16px !important;
+  border-left: 3px solid var(--primary) !important;
+}
+
+.usos-quote-inner.is-changing {
+  opacity: 0 !important;
+  transform: translateY(4px) !important;
+}
+
+.usos-quote-text {
+  font-size: 1.25rem !important;
+  line-height: 1.7 !important;
+  color: var(--text-main) !important;
+  font-style: italic !important;
+  font-weight: 650 !important;
+  margin: 0 !important;
+  letter-spacing: -0.01em !important;
+}
+
+html[data-theme="dark"] .usos-quote-text {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+}
+
+html[data-theme="light"] .usos-quote-text {
+  color: #0f172a !important;
+}
+
+.usos-quote-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 0.5rem !important;
+  border-top: 1px dashed var(--border-default) !important;
+  padding-top: 0.75rem !important;
+}
+
+.usos-quote-author {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 800 !important;
+  color: var(--primary) !important;
+}
+
+.usos-quote-author-dash {
+  opacity: 0.6 !important;
+}
+
+.usos-quote-tag {
+  font-size: 0.70rem !important;
+  font-weight: 650 !important;
+  color: var(--text-muted) !important;
+  background: var(--bg-muted) !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border-default) !important;
+}
+
+/* Dark mode dla karty motywacyjnej */
+html[data-theme="dark"] .usos-motivation-card {
+  background: #111827 !important;
+  border-color: #26334d !important;
+  border-left-color: #3b82f6 !important;
+}
+
+html[data-theme="dark"] .usos-motivation-header {
+  background: #151d2f !important;
+  border-color: #26334d !important;
+}
+
+html[data-theme="dark"] .usos-cat-companion-box {
+  background: rgba(30, 41, 59, 0.65) !important;
+  border-color: #26334d !important;
+}
+
+html[data-theme="dark"] .usos-cat-speech-bubble {
+  background: #0f172a !important;
+  border-color: #26334d !important;
+}
+
+html[data-theme="dark"] .usos-cat-speech-bubble::before {
+  background: #0f172a !important;
+  border-left-color: #26334d !important;
+  border-bottom-color: #26334d !important;
+}
+
+html[data-theme="dark"] .usos-cat-name-chip {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .usos-cat-message {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .usos-quote-text {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .usos-quote-tag {
+  background: #0d131f !important;
+  border-color: #26334d !important;
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .usos-quote-footer {
+  border-color: #26334d !important;
 }
 
 html[data-usos-modern="enabled"] .usos-sched-empty {
@@ -4556,6 +5111,623 @@ html[data-usos-modern="enabled"] .usos-maint-diag-row code {
   border-radius: 4px !important;
   border: 1px solid var(--border-default) !important;
 }
+
+/* ==========================================================================
+   26. NOWOCZESNY EKRAN LOGOWANIA CAS & USOS 2.0 (DARK & LIGHT MODE)
+   ========================================================================== */
+
+/* Cała strona logowania */
+html[data-usos-modern="enabled"].usos2-login-page,
+html[data-usos-modern="enabled"] body.login,
+html[data-usos-modern="enabled"] body.usos2-login-page {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  font-family: var(--font-sans) !important;
+  transition: background-color 0.25s ease, color 0.25s ease !important;
+}
+
+/* Tło strony logowania - Dark Mode z subtelnym mesh gradientem */
+html[data-theme="dark"].usos2-login-page,
+html[data-theme="dark"] body.login,
+html[data-theme="dark"] body.usos2-login-page {
+  background-color: #070b14 !important;
+  background-image: 
+    radial-gradient(ellipse at 50% 12%, rgba(59, 130, 246, 0.16) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 85%, rgba(99, 102, 241, 0.1) 0%, transparent 45%),
+    radial-gradient(ellipse at 15% 90%, rgba(14, 165, 233, 0.08) 0%, transparent 45%) !important;
+  background-attachment: fixed !important;
+  color: #f8fafc !important;
+}
+
+/* Tło strony logowania - Light Mode */
+html[data-theme="light"].usos2-login-page,
+html[data-theme="light"] body.login,
+html[data-theme="light"] body.usos2-login-page {
+  background-color: #f8fafc !important;
+  background-image: 
+    radial-gradient(ellipse at 50% 10%, rgba(37, 99, 235, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 85%, rgba(99, 102, 241, 0.05) 0%, transparent 40%) !important;
+  background-attachment: fixed !important;
+  color: #0f172a !important;
+}
+
+/* Ukrycie starego logo USOS */
+html[data-usos-modern="enabled"] #logo,
+html[data-usos-modern="enabled"] .login #logo,
+html[data-usos-modern="enabled"] #container > #logo,
+html[data-usos-modern="enabled"] #container > img,
+html[data-usos-modern="enabled"] img[src*="logo_pl"],
+html[data-usos-modern="enabled"] img[src*="logo_en"] {
+  display: none !important;
+}
+
+/* Górny pasek pomocniczy CAS (#header) */
+html[data-usos-modern="enabled"] .login #header,
+html[data-usos-modern="enabled"] #header {
+  background: transparent !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  padding: 0.6rem 1.5rem !important;
+  box-shadow: none !important;
+}
+
+html[data-usos-modern="enabled"] .login #header-content,
+html[data-usos-modern="enabled"] #header-content {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+}
+
+html[data-usos-modern="enabled"] .login #header a,
+html[data-usos-modern="enabled"] #header a {
+  color: var(--text-muted) !important;
+  text-decoration: none !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.4rem !important;
+  padding: 0.35rem 0.75rem !important;
+  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+  transition: all 0.15s ease !important;
+}
+
+html[data-usos-modern="enabled"] .login #header a:hover,
+html[data-usos-modern="enabled"] #header a:hover {
+  color: var(--primary) !important;
+  background: var(--primary-light) !important;
+  border-color: var(--border-default) !important;
+}
+
+/* Główny kontener ekranu logowania (#container) */
+html[data-usos-modern="enabled"] .login #container,
+html[data-usos-modern="enabled"].usos2-login-page #container,
+html[data-usos-modern="enabled"] body.usos2-login-page #container,
+html[data-usos-modern="enabled"] #container {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: calc(100vh - 120px) !important;
+  padding: 2.5rem 1rem !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Nowoczesna karta logowania (#content) */
+html[data-usos-modern="enabled"] .login #content,
+html[data-usos-modern="enabled"] #container > #content {
+  width: 100% !important;
+  max-width: 440px !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: 20px !important;
+  padding: 2.25rem 2.25rem 2rem 2.25rem !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(20px) !important;
+  box-sizing: border-box !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+html[data-theme="light"] .login #content,
+html[data-theme="light"] #container > #content {
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.09), 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Nowy nagłówek marki USOS 2.0 (#usos2-login-brand) */
+.usos2-login-brand {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  margin-bottom: 1.75rem !important;
+}
+
+.usos2-login-logo-slot {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.85rem !important;
+  margin-bottom: 1rem !important;
+  cursor: default !important;
+}
+
+.usos2-brand-badge-icon {
+  width: 44px !important;
+  height: 44px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 14px !important;
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.35) !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.2s ease !important;
+}
+
+.usos2-brand-badge-icon:hover {
+  transform: scale(1.05) !important;
+}
+
+.usos2-brand-text-wrap {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+}
+
+.usos2-brand-heading {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  line-height: 1 !important;
+}
+
+.usos2-brand-name {
+  font-size: 1.65rem !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.03em !important;
+  background: linear-gradient(135deg, var(--text-main) 30%, var(--primary) 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+.usos2-brand-version-pill {
+  font-size: 0.72rem !important;
+  font-weight: 850 !important;
+  padding: 0.15rem 0.5rem !important;
+  border-radius: 9999px !important;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4) !important;
+  letter-spacing: 0.05em !important;
+}
+
+.usos2-brand-sub {
+  font-size: 0.72rem !important;
+  font-weight: 650 !important;
+  color: var(--text-muted) !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  margin-top: 0.25rem !important;
+}
+
+.usos2-login-title {
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  color: var(--text-main) !important;
+  margin: 0.25rem 0 0.25rem 0 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.usos2-login-desc {
+  font-size: 0.85rem !important;
+  color: var(--text-muted) !important;
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+
+/* Formularz logowania */
+html[data-usos-modern="enabled"] .login .form,
+html[data-usos-modern="enabled"] .login .form.edgeless,
+html[data-usos-modern="enabled"] .login #fm1 {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+/* Pola tekstowe i etykiety */
+html[data-usos-modern="enabled"] .login .new-input {
+  position: relative !important;
+  margin-bottom: 1.25rem !important;
+  width: 100% !important;
+}
+
+html[data-usos-modern="enabled"] .login .new-input label {
+  display: block !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  color: var(--text-muted) !important;
+  margin-bottom: 0.45rem !important;
+  letter-spacing: 0.04em !important;
+  background: transparent !important;
+  padding: 0 !important;
+  position: static !important;
+}
+
+.usos2-input-inner-wrap {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+.usos2-input-icon {
+  position: absolute !important;
+  left: 14px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  color: var(--text-subtle) !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+  transition: color 0.15s ease !important;
+}
+
+.usos2-input-inner-wrap:focus-within .usos2-input-icon {
+  color: var(--primary) !important;
+}
+
+html[data-usos-modern="enabled"] .login input#username,
+html[data-usos-modern="enabled"] .login input#password,
+html[data-usos-modern="enabled"] .login input[type="text"],
+html[data-usos-modern="enabled"] .login input[type="password"],
+html[data-usos-modern="enabled"] .login .mdc-text-field__input,
+html[data-usos-modern="enabled"] .login .new-input input {
+  width: 100% !important;
+  height: 48px !important;
+  border-radius: 12px !important;
+  background: var(--bg-input) !important;
+  border: 1px solid var(--border-default) !important;
+  color: var(--text-main) !important;
+  font-size: 0.9375rem !important;
+  font-family: var(--font-sans) !important;
+  padding: 0.75rem 1rem 0.75rem 46px !important;
+  padding-left: 46px !important;
+  padding-right: 42px !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
+  outline: none !important;
+}
+
+html[data-usos-modern="enabled"] .login input#username:focus,
+html[data-usos-modern="enabled"] .login input#password:focus,
+html[data-usos-modern="enabled"] .login .new-input input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--ring-color) !important;
+}
+
+html[data-usos-modern="enabled"] .login input::placeholder,
+html[data-usos-modern="enabled"] .login .new-input input::placeholder {
+  color: var(--text-subtle) !important;
+  opacity: 0.75 !important;
+  font-size: 0.875rem !important;
+}
+
+/* Przycisk pokazywania hasła */
+.usos2-pwd-toggle {
+  position: absolute !important;
+  right: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--text-subtle) !important;
+  cursor: pointer !important;
+  padding: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+  z-index: 3 !important;
+  transition: color 0.15s ease, background-color 0.15s ease !important;
+}
+
+.usos2-pwd-toggle:hover {
+  color: var(--primary) !important;
+  background: var(--primary-light) !important;
+}
+
+/* Obsługa autofill przeglądarki w trybie ciemnym */
+html[data-theme="dark"] .login input:-webkit-autofill,
+html[data-theme="dark"] .login input:-webkit-autofill:hover, 
+html[data-theme="dark"] .login input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f8fafc !important;
+  -webkit-box-shadow: 0 0 0px 1000px #0f172a inset !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* Przycisk zatwierdzenia logowania */
+html[data-usos-modern="enabled"] .login .form-button,
+html[data-usos-modern="enabled"] .login button[type="submit"],
+html[data-usos-modern="enabled"] .login .submit-button button {
+  width: 100% !important;
+  height: 48px !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  color: #ffffff !important;
+  font-family: var(--font-sans) !important;
+  font-size: 0.95rem !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.02em !important;
+  border: none !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.4) !important;
+  transition: all 0.2s ease !important;
+  margin-top: 0.75rem !important;
+  outline: none !important;
+}
+
+html[data-usos-modern="enabled"] .login .form-button:hover,
+html[data-usos-modern="enabled"] .login button[type="submit"]:hover {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  box-shadow: 0 6px 20px 0 rgba(37, 99, 235, 0.55) !important;
+  transform: translateY(-1px) !important;
+}
+
+html[data-usos-modern="enabled"] .login .form-button:active,
+html[data-usos-modern="enabled"] .login button[type="submit"]:active {
+  transform: translateY(0) scale(0.99) !important;
+}
+
+/* Ukrycie pustych komunikatów błędów z CAS */
+html[data-usos-modern="enabled"] .login .message:empty,
+html[data-usos-modern="enabled"] .login .message-body:empty,
+html[data-usos-modern="enabled"] .login .message:not(:has(.message-body:not(:empty))),
+html[data-usos-modern="enabled"] .login #msg:empty {
+  display: none !important;
+}
+
+/* Komunikaty błędów i ostrzeżeń na logowaniu (gdy mają treść) */
+html[data-usos-modern="enabled"] .login .message:not(:empty),
+html[data-usos-modern="enabled"] .login .message:has(.message-body:not(:empty)),
+html[data-usos-modern="enabled"] .login .message-body:not(:empty) {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  border-left: 4px solid #ef4444 !important;
+  color: #fca5a5 !important;
+  border-radius: 8px !important;
+  padding: 0.75rem 1rem !important;
+  margin-bottom: 1.25rem !important;
+  font-size: 0.85rem !important;
+}
+
+html[data-theme="light"] .login .message:not(:empty),
+html[data-theme="light"] .login .message:has(.message-body:not(:empty)),
+html[data-theme="light"] .login .message-body:not(:empty) {
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
+  border-color: #fecaca !important;
+  border-left-color: #ef4444 !important;
+}
+
+/* Karty wylogowania i sukcesu logowania CAS */
+.usos2-logout-card,
+.usos2-login-success-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  padding: 1rem 0.5rem !important;
+}
+
+.usos2-status-icon-wrap {
+  width: 68px !important;
+  height: 68px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 1rem !important;
+}
+
+.usos2-status-icon-wrap.usos2-status-success {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #10b981 !important;
+  border: 2px solid rgba(16, 185, 129, 0.3) !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.25) !important;
+}
+
+.usos2-logout-title {
+  font-size: 1.35rem !important;
+  font-weight: 800 !important;
+  color: var(--text-main) !important;
+  margin: 0 0 0.45rem 0 !important;
+}
+
+.usos2-logout-desc {
+  font-size: 0.88rem !important;
+  color: var(--text-muted) !important;
+  line-height: 1.45 !important;
+  margin: 0 0 1.25rem 0 !important;
+  max-width: 360px !important;
+}
+
+.usos2-logout-actions {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
+}
+
+.usos2-btn-relogin {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.55rem !important;
+  width: 100% !important;
+  height: 48px !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  color: #ffffff !important;
+  font-family: var(--font-sans) !important;
+  font-size: 0.95rem !important;
+  font-weight: 750 !important;
+  text-decoration: none !important;
+  box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.4) !important;
+  transition: all 0.2s ease !important;
+  box-sizing: border-box !important;
+}
+
+.usos2-btn-relogin:hover {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  box-shadow: 0 6px 20px 0 rgba(37, 99, 235, 0.55) !important;
+  transform: translateY(-1px) !important;
+  color: #ffffff !important;
+}
+
+.usos2-btn-primary-redirect {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.4) !important;
+}
+
+.usos2-btn-primary-redirect:hover {
+  background: linear-gradient(135deg, #34d399, #10b981) !important;
+  box-shadow: 0 6px 20px 0 rgba(16, 185, 129, 0.55) !important;
+}
+
+/* Neutralizacja starych kart MDC CAS */
+html[data-usos-modern="enabled"] .login .mdc-card,
+html[data-usos-modern="enabled"] #logoutBody .mdc-card,
+html[data-usos-modern="enabled"] .usos2-modern-logout-container {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Linki pomocnicze pod formularzem */
+html[data-usos-modern="enabled"] .login .show-help {
+  text-align: center !important;
+  margin: 0.75rem 0 0 0 !important;
+  font-size: 0.82rem !important;
+}
+
+html[data-usos-modern="enabled"] .login .show-help a {
+  color: var(--text-muted) !important;
+  text-decoration: none !important;
+  font-weight: 550 !important;
+  transition: color 0.15s ease !important;
+}
+
+html[data-usos-modern="enabled"] .login .show-help a:hover {
+  color: var(--primary) !important;
+  text-decoration: underline !important;
+}
+
+/* Stopka na karcie logowania oraz globalna stopka (Made By BorysiaczekUwU) */
+.usos2-login-footer {
+  margin-top: 1.5rem !important;
+  padding-top: 1rem !important;
+  border-top: 1px dashed var(--border-default) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.75rem !important;
+  font-size: 0.78rem !important;
+  color: var(--text-muted) !important;
+  flex-wrap: wrap !important;
+}
+
+.usos2-global-footer {
+  width: 100% !important;
+  margin-top: 3.5rem !important;
+  padding: 1.75rem 1rem !important;
+  border-top: 1px solid var(--border-default) !important;
+  background: var(--bg-card) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+}
+
+.usos2-footer-content,
+.usos2-credit-footer-line {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.65rem !important;
+  font-size: 0.82rem !important;
+  color: var(--text-muted) !important;
+  flex-wrap: wrap !important;
+  margin-top: 0.4rem !important;
+}
+
+.usos2-footer-brand {
+  font-weight: 750 !important;
+  color: var(--text-main) !important;
+}
+
+.usos2-footer-separator {
+  color: var(--text-subtle) !important;
+  opacity: 0.6 !important;
+}
+
+.usos2-author-link {
+  color: var(--primary) !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+  transition: all 0.15s ease !important;
+}
+
+.usos2-author-link:hover {
+  color: var(--primary-hover) !important;
+  text-decoration: underline !important;
+}
+
+.usos2-github-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 2px 9px !important;
+  border-radius: 9999px !important;
+  background: var(--bg-card-hover) !important;
+  border: 1px solid var(--border-default) !important;
+  color: var(--text-main) !important;
+  text-decoration: none !important;
+  font-size: 0.75rem !important;
+  font-weight: 650 !important;
+  transition: all 0.15s ease !important;
+}
+
+.usos2-github-badge svg {
+  color: inherit !important;
+  flex-shrink: 0 !important;
+}
+
+.usos2-github-badge:hover {
+  background: var(--primary-light) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+  transform: translateY(-1px) !important;
+}
+
 
 
 

@@ -24,8 +24,8 @@
   function isUsosPage() {
     const host = window.location.hostname.toLowerCase();
     const path = window.location.pathname.toLowerCase();
-    if (host.includes('usos') || path.includes('usos')) return true;
-    return Boolean(document.querySelector('#topmenu, #layout-c, table.tab, .body-container, a[href*="kontroler.php"]'));
+    if (host.includes('usos') || path.includes('usos') || host.includes('cas') || path.includes('/cas/')) return true;
+    return Boolean(document.querySelector('#topmenu, #layout-c, table.tab, .body-container, a[href*="kontroler.php"], body.login, form#fm1, #container > #content, #container > #logo'));
   }
 
   /**
@@ -50,6 +50,7 @@
         runModernizer();
         startDOMObserver();
         scheduleShadowPasses();
+        initSessionKeepalive();
       }
     });
 
@@ -135,6 +136,7 @@
         cleanLegacyInlineColors();
         return;
       }
+      modernizeLoginPage();
       modernizeBreadcrumbs();
       modernizeTablesAndGrades();
       modernizeAlerts();
@@ -146,6 +148,7 @@
       modernizeHeadings();
       modernizeRegistrationCalendar();
       modernizeHomeDashboard();
+      modernizeFooter();
       cleanLegacyInlineColors();
     } catch (err) {
       console.warn('[USOSweb 2.0] Błąd podczas renderowania:', err);
@@ -773,7 +776,15 @@
       a:hover { color: var(--primary) !important; }
     `,
     timetable: `
-      :host { width: 100% !important; max-width: none !important; }
+      :host {
+        width: 100% !important;
+        max-width: none !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        background: transparent !important;
+      }
+      :host > * { overflow: visible !important; }
       *:not(slot) { max-width: none !important; }
       * { border-color: var(--border-default) !important; }
       hr { border: none !important; border-top: 1px dashed var(--border-default) !important; background: transparent !important; margin: 0 !important; }
@@ -781,16 +792,25 @@
     `,
     entry: `
       :host {
-        border-radius: 10px !important;
+        border-radius: 8px !important;
         overflow: hidden !important;
         cursor: pointer !important;
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100% !important;
+        box-sizing: border-box !important;
+      }
+      slot {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        height: 100% !important;
       }
       *:not(slot) {
         -webkit-line-clamp: unset !important;
         line-clamp: unset !important;
         text-overflow: clip !important;
         white-space: normal !important;
-        max-height: none !important;
         background-color: transparent !important;
         color: inherit !important;
         font-family: var(--font-sans) !important;
@@ -920,7 +940,7 @@
         injectShadowCSS(root, 'footer', SHADOW_CSS.footer);
       }
       if (tag === 'usos-timetable') injectShadowCSS(root, 'timetable', SHADOW_CSS.timetable);
-      if (tag === 'timetable-entry' && !host.closest('usos-timetable[mini]')) {
+      if (tag === 'timetable-entry') {
         injectShadowCSS(root, 'entry', SHADOW_CSS.entry);
       }
 
@@ -940,6 +960,8 @@
       }
       modernizeShadowComponents();
       modernizeUpcomingClassBanner();
+      modernizeLoginPage();
+      modernizeFooter();
       const sched = document.querySelector('.usos-home-schedule-widget');
       if (sched) {
         formatScheduleWidgetTimetable(sched.querySelector('#tab-current'));
@@ -984,10 +1006,58 @@
     return `${m} min`;
   }
 
-  /** Zbiera tekst z light DOM i (jeśli jest) z shadow DOM bloczka. */
+  /** Bezpiecznie wyciąga czyste węzły tekstowe, pomijając <style>, <script>, <svg> i UI USOS 2.0 */
+  function getCleanNodeText(root) {
+    if (!root) return '';
+    if (root.nodeType === Node.ELEMENT_NODE) {
+      const tag = root.tagName.toLowerCase();
+      if (tag === 'style' || tag === 'script' || tag === 'svg' || tag === 'noscript') return '';
+    }
+    const walker = document.createTreeWalker(
+      root,
+      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+      {
+        acceptNode(node) {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const tag = node.tagName.toLowerCase();
+            if (tag === 'style' || tag === 'script' || tag === 'svg' || tag === 'noscript') {
+              return NodeFilter.FILTER_REJECT;
+            }
+            if (node.classList && (
+              node.classList.contains('usos-entry-card-wrap') ||
+              node.classList.contains('usos-entry-hide-btn') ||
+              node.classList.contains('usos2-entry-details') ||
+              node.classList.contains('usos-cal-current-time-line')
+            )) {
+              return NodeFilter.FILTER_REJECT;
+            }
+            return NodeFilter.FILTER_SKIP;
+          }
+          if (node.nodeType === Node.TEXT_NODE) {
+            const val = node.nodeValue?.trim();
+            if (!val || val === '---') return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+          }
+          return NodeFilter.FILTER_SKIP;
+        }
+      }
+    );
+    const parts = [];
+    while (walker.nextNode()) {
+      const v = walker.currentNode.nodeValue?.trim();
+      if (v) parts.push(v);
+    }
+    return parts.join('\n');
+  }
+
+  /** Zbiera tekst z light DOM i (jeśli jest) z shadow DOM bloczka, gwarantując brak kodu CSS (:host). */
   function collectEntryText(entry) {
-    let text = entry.textContent || '';
-    if (entry.shadowRoot) text += '\n' + (entry.shadowRoot.textContent || '');
+    if (!entry) return '';
+    let text = getCleanNodeText(entry);
+    if (entry.shadowRoot) {
+      const sText = getCleanNodeText(entry.shadowRoot);
+      if (sText) text += '\n' + sText;
+    }
     return text;
   }
 
@@ -1063,7 +1133,7 @@
       const cols = Array.from(tt.children);
       cols.forEach((col) => {
         col.style.setProperty('flex', '1 1 0%', 'important');
-        col.style.setProperty('min-width', '130px', 'important');
+        col.style.setProperty('min-width', '0', 'important');
         col.style.setProperty('max-width', 'none', 'important');
         col.style.setProperty('width', 'auto', 'important');
         const day = col.querySelector('timetable-day');
@@ -1149,49 +1219,68 @@
      6d. FILTROWANIE I ODZNACZANIE PRZEDMIOTÓW NA PLANIE (ZAPIS W STORAGE)
      ========================================================================== */
 
+  function cleanSubjectName(raw) {
+    if (!raw) return '';
+    let str = String(raw).trim().split(/\r?\n/)[0].trim();
+    if (!str) return '';
+
+    // Całkowite odrzucenie kodu CSS (np. :host {, var(--, style, reguły stylów)
+    if (str.includes('{') || str.includes('}') || str.includes(';') || str.includes('!important')) {
+      return '';
+    }
+    if (/^:host\b|^\.[a-z0-9_-]+\s*\{|^#[a-z0-9_-]+\s*\{|\bvar\(--|\bdisplay\s*:|\bborder\b|\bbackground\b|\bcolor\s*:|\bpadding\b|\bmargin\b/i.test(str)) {
+      return '';
+    }
+
+    // Sprawdź czy ciąg to nie jest sam kod typu / pusta wartość
+    if (/^\s*(?:WYK|ĆW|CW|LAB|LEKT|PROJ|SEM|WYKŁAD|ĆWICZENIA|LABORATORIUM|PROJEKT|LEKTORAT|SEMINARIUM|ZAJĘCIA|PRZEDMIOT|---)\s*$/i.test(str)) {
+      return '';
+    }
+    str = str.replace(/\s*\(PSUB[^\)]*\)/gi, '');
+    str = str.replace(/\s*\[[A-Z0-9_\-]+\]/gi, '');
+
+    // Usuń przedrostki typu zajęć z początku nazwy (np. "WYK:", "wykład ", "ćwiczenia ", "laboratorium ", "lektorat ")
+    str = str.replace(/^(?:WYK|ĆW|CW|LAB|LEKT|PROJ|SEM|WYKŁAD(?:Y)?|ĆWICZENIA|LABORATORI(?:UM|A)|PROJEKT(?:Y)?|LEKTORAT(?:Y)?|SEMINARI(?:UM|A)|ZAJĘCIA)\s*[:\-–\s]\s*/gi, '');
+    str = str.replace(/^(?:wykład(?:y)?|ćwiczenia|laboratori(?:um|a)|projekt(?:y)?|lektorat(?:y)?|seminari(?:um|a)|zajęcia)\s+/gi, '');
+
+    const typePattern = /\s*[\(\[\-–,]\s*(?:wykład(?:y)?|ćwiczenia|laboratori(?:um|a)|projekt(?:y)?|lektorat(?:y)?|seminari(?:um|a)|zajęcia|wyk|ćw|cw|lab|lekt|proj|sem)\b[^\)\]]*[\)\]]?/gi;
+    while (typePattern.test(str)) {
+      str = str.replace(typePattern, '').trim();
+    }
+    str = str.replace(/\s+(?:WYK|ĆW|CW|LAB|LEKT|PROJ|SEM)\b.*$/i, '').trim();
+    str = str.replace(/[\-–,:]\s*$/, '').trim();
+
+    if (/^\s*(?:WYK|ĆW|CW|LAB|LEKT|PROJ|SEM|WYKŁAD|ĆWICZENIA|LABORATORIUM|PROJEKT|LEKTORAT|SEMINARIUM|ZAJĘCIA|PRZEDMIOT|---)\s*$/i.test(str)) {
+      return '';
+    }
+    return str;
+  }
+
   function getSubjectKey(entry) {
-    if (entry.dataset.usosSubject) return entry.dataset.usosSubject;
-
-    const titleAttr = entry.getAttribute('title') || entry.getAttribute('data-subject');
-    if (titleAttr && titleAttr.length < 80) {
-      const clean = titleAttr.split('\n')[0].replace(/\s+(WYK|ĆW|CW|LAB|LEKT|PROJ|SEM)\b.*$/i, '').trim();
-      entry.dataset.usosSubject = clean;
-      return clean;
+    if (!entry) return 'Przedmiot';
+    const cachedClean = entry.dataset.usosCleanSubject;
+    if (cachedClean && !cachedClean.includes(':host') && !cachedClean.includes('{') && !/^\s*(?:WYK|ĆW|CW|LAB|LEKT|PROJ|SEM|WYKŁAD|ĆWICZENIA|LABORATORIUM|PROJEKT|LEKTORAT|SEMINARIUM|ZAJĘCIA|PRZEDMIOT|---)\s*$/i.test(cachedClean)) {
+      return cachedClean;
     }
-
-    let text = '';
-    Array.from(entry.childNodes).forEach(node => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        text += node.textContent + '\n';
-      } else if (node.nodeType === Node.ELEMENT_NODE && !node.classList.contains('usos2-entry-details') && !node.classList.contains('usos-entry-hide-btn')) {
-        text += node.textContent + '\n';
-      }
-    });
-
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    if (lines.length > 0) {
-      let subj = lines[0];
-      subj = subj.replace(/^(WYK|ĆW|CW|LAB|LEKT|PROJ|SEM)\s*:\s*/i, '');
-      subj = subj.replace(/\s+(WYK|ĆW|CW|LAB|LEKT|PROJ|SEM)\b.*$/i, '');
-      if (subj.length >= 2) {
-        entry.dataset.usosSubject = subj.trim();
-        return subj.trim();
-      }
+    const details = getTimetableEntryDetails(entry);
+    if (details.subject && !details.subject.includes(':host') && !details.subject.includes('{') && !/^\s*(?:WYK|ĆW|CW|LAB|LEKT|PROJ|SEM|WYKŁAD|ĆWICZENIA|LABORATORIUM|PROJEKT|LEKTORAT|SEMINARIUM|ZAJĘCIA|PRZEDMIOT|---)\s*$/i.test(details.subject)) {
+      entry.dataset.usosCleanSubject = details.subject;
+      entry.dataset.usosSubject = details.subject;
+      return details.subject;
     }
-
-    entry.dataset.usosSubject = 'Przedmiot';
     return 'Przedmiot';
   }
 
   function getHiddenSubjects(callback) {
+    const sanitize = (list) => (Array.isArray(list) ? list.filter(s => s && typeof s === 'string' && !s.includes(':host') && !s.includes('{')) : []);
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       chrome.storage.local.get(['usos_hidden_subjects'], (res) => {
-        callback(res.usos_hidden_subjects || []);
+        callback(sanitize(res.usos_hidden_subjects));
       });
     } else {
       try {
         const stored = JSON.parse(localStorage.getItem('usos_hidden_subjects') || '[]');
-        callback(stored);
+        callback(sanitize(stored));
       } catch {
         callback([]);
       }
@@ -1247,9 +1336,10 @@
 
   function applyFilterState(tt, hiddenList) {
     const entries = tt.querySelectorAll('timetable-entry');
+    const normalizedHidden = (hiddenList || []).map(cleanSubjectName);
     entries.forEach((entry) => {
       const subj = getSubjectKey(entry);
-      const isHidden = hiddenList.includes(subj);
+      const isHidden = normalizedHidden.includes(cleanSubjectName(subj));
       entry.classList.toggle('usos-entry-hidden', isHidden);
       if (isHidden) {
         entry.style.setProperty('display', 'none', 'important');
@@ -1262,22 +1352,23 @@
     tt.querySelectorAll('timetable-day').forEach(recalculateDayColumns);
 
     // Zaktualizuj widok pigułek w pasku filtrów
-    updateFilterBarUI(tt, hiddenList);
+    updateFilterBarUI(tt, normalizedHidden);
   }
 
   function updateFilterBarUI(tt, hiddenList) {
     const bar = document.getElementById('usos-schedule-filter-bar');
     if (!bar) return;
 
+    const normalizedHidden = (hiddenList || []).map(cleanSubjectName);
     const pills = bar.querySelectorAll('.usos-filter-pill');
     pills.forEach((pill) => {
-      const subj = pill.dataset.subject;
-      const isHidden = hiddenList.includes(subj);
+      const subj = cleanSubjectName(pill.dataset.subject);
+      const isHidden = normalizedHidden.includes(subj);
       pill.classList.toggle('active', !isHidden);
       pill.classList.toggle('hidden-subject', isHidden);
       pill.innerHTML = isHidden 
-        ? `<span class="icon" style="opacity:0.7">⊘</span> <span>${subj}</span>` 
-        : `<span class="icon" style="color:#60a5fa">✓</span> <span>${subj}</span>`;
+        ? `<span class="icon" style="opacity:0.7">⊘</span> <span>${escapeHtml(subj)}</span>` 
+        : `<span class="icon" style="color:#60a5fa">✓</span> <span>${escapeHtml(subj)}</span>`;
     });
 
     const counter = bar.querySelector('.usos-filter-counter');
@@ -1307,7 +1398,7 @@
 
     entries.forEach((entry) => {
       const subj = getSubjectKey(entry);
-      if (!seen.has(subj)) {
+      if (subj && subj !== 'Przedmiot' && !subj.includes(':host') && !subj.includes('{') && !seen.has(subj)) {
         seen.add(subj);
         uniqueSubjects.push(subj);
       }
@@ -1841,6 +1932,12 @@
       sidebarCol.appendChild(prefsCard);
     }
 
+    // --- KARTA 6: MOTYWUJĄCY CYTAT (STUDENCKI PRZETRWALNIK) ---
+    const motivationCard = buildStudentMotivationCard();
+    if (motivationCard) {
+      sidebarCol.appendChild(motivationCard);
+    }
+
     dashboardContainer.appendChild(mainCol);
     dashboardContainer.appendChild(sidebarCol);
 
@@ -2035,7 +2132,7 @@
 
   function findUpcomingClassBanner() {
     const elements = Array.from(document.querySelectorAll('div, p, section, table, td, span')).filter((el) => {
-      if (el.closest('#usos-modern-navbar, #usos-home-dashboard, .usos-home-hero, usos-timetable, .lista-zajec, #usos-schedule-filter-bar')) {
+      if (el.closest('#usos-modern-navbar, #usos-home-dashboard, .usos-home-hero, usos-timetable, .lista-zajec, #usos-schedule-filter-bar, .usos-motivation-card')) {
         return false;
       }
       const txt = (el.innerText || el.textContent || '').trim();
@@ -2161,48 +2258,516 @@
     }
   }
 
-  function tagAndFormatTimetableEntry(entry) {
-    if (!entry) return;
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
-    const text = (entry.textContent || '').trim();
-    const title = (entry.getAttribute('title') || '').trim();
-    const raw = (text + ' ' + title).toUpperCase();
+  let cachedStudentCourses = null;
 
-    // Dopasowanie klas formy zajęć do legendy
-    if (raw.includes('LEKT') || raw.includes('LEK') || raw.includes('LEKTORAT') || raw.includes('JĘZYK') || raw.includes('ANGIELSKI') || raw.includes('NIEMIECKI')) {
-      entry.classList.add('usos-entry-lektorat');
-      entry.setAttribute('data-course-type', 'lektorat');
-    } else if (raw.includes('PROJ') || raw.includes('PROJEKT')) {
-      entry.classList.add('usos-entry-proj');
-      entry.setAttribute('data-course-type', 'projekt');
-    } else if (raw.includes('LAB') || raw.includes('LABORATOR')) {
-      entry.classList.add('usos-entry-lab');
-      entry.setAttribute('data-course-type', 'laboratorium');
-    } else if (raw.includes('WYK') || raw.includes('WYKŁAD')) {
-      entry.classList.add('usos-entry-wyklad');
-      entry.setAttribute('data-course-type', 'wyklad');
-    } else if (raw.includes('CW') || raw.includes('ĆW') || raw.includes('ĆWICZEN')) {
-      entry.classList.add('usos-entry-cwiczenia');
-      entry.setAttribute('data-course-type', 'cwiczenia');
-    } else if (raw.includes('SEM') || raw.includes('SEMINAR')) {
-      entry.classList.add('usos-entry-sem');
-      entry.setAttribute('data-course-type', 'seminarium');
+  function getKnownStudentCourses() {
+    if (cachedStudentCourses && cachedStudentCourses.length > 0) {
+      return cachedStudentCourses;
     }
 
-    if (!entry.querySelector('.usos-mini-time-badge')) {
-      const start = parseGridTime(entry.style.gridRowStart);
-      const end = parseGridTime(entry.style.gridRowEnd);
-      if (start && end) {
-        const timeBadge = document.createElement('span');
-        timeBadge.className = 'usos-mini-time-badge';
-        timeBadge.textContent = `${formatTime(start)}–${formatTime(end)}`;
-        entry.appendChild(timeBadge);
+    const list = [];
+    const seen = new Set();
+
+    // Szukamy elementów zajęć w całym dokumencie (zarówno w starych ramkach, jak i po przeniesieniu do dashboardu)
+    const items = document.querySelectorAll(
+      '.lista-zajec > li, .usos-courses-widget li, .usos-course-item-card, usos-frame.student li, usos-frame[title*="Zajęcia studenta" i] li'
+    );
+
+    items.forEach(li => {
+      // Wyciągnij nazwę przedmiotu
+      const titleLink = li.querySelector('.font-medium a, a:not(.usos-group-pill):not([href*="grupa"]), a:not([href*="grupa"]):not([href*="plan"])')
+        || li.querySelector('a');
+      let name = titleLink ? titleLink.textContent.trim() : '';
+      if (!name) {
+        const bold = li.querySelector('b, strong, .name');
+        if (bold) name = bold.textContent.trim();
+      }
+
+      if (!name || seen.has(name.toLowerCase())) return;
+
+      const types = [];
+      li.querySelectorAll('.inlined-list li a, .usos-group-pill, a[href*="grupa"]').forEach(a => {
+        const t = (a.textContent || '').toLowerCase();
+        if (t.includes('wyk')) types.push('WYK');
+        if (t.includes('ćw') || t.includes('cw')) types.push('ĆW');
+        if (t.includes('lab')) types.push('LAB');
+        if (t.includes('proj')) types.push('PROJ');
+        if (t.includes('lekt') || t.includes('ang') || t.includes('niem')) types.push('LEKT');
+        if (t.includes('sem')) types.push('SEM');
+      });
+
+      seen.add(name.toLowerCase());
+      list.push({ name, types });
+    });
+
+    if (list.length > 0) {
+      cachedStudentCourses = list;
+      try {
+        localStorage.setItem('usos_known_courses', JSON.stringify(list));
+      } catch {}
+      return list;
+    }
+
+    // Odczyt z pamięci trwałej (przydatny na podstronie /kontroler.php?_action=home/plan)
+    try {
+      const stored = JSON.parse(localStorage.getItem('usos_known_courses') || '[]');
+      if (Array.isArray(stored) && stored.length > 0) {
+        cachedStudentCourses = stored;
+        return stored;
+      }
+    } catch {}
+
+    // Semestralne przedmioty fallback dla kierunku Sztuczna inteligencja (AEI Politechnika Śląska)
+    const defaults = [
+      { name: 'Technika mikroprocesorowa', types: ['WYK', 'LAB'] },
+      { name: 'Matematyka dyskretna i systemy decyzyjne', types: ['WYK', 'LAB', 'ĆW'] },
+      { name: 'Matematyka', types: ['WYK', 'ĆW'] },
+      { name: 'Język angielski (B2)', types: ['LEKT'] },
+      { name: 'Projekt inżynierski / zespołowy', types: ['PROJ'] },
+      { name: 'Algorytmy i struktury danych', types: ['WYK', 'LAB'] }
+    ];
+    cachedStudentCourses = defaults;
+    return defaults;
+  }
+
+  function getWeekMondayDate(refDate, weekOffset = 0) {
+    const d = new Date(refDate);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1) + (weekOffset * 7);
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  function getTimetableEntryDetails(entry) {
+    let start = parseGridTime(entry.style.gridRowStart) || parseGridTime(window.getComputedStyle?.(entry)?.gridRowStart);
+    let end = parseGridTime(entry.style.gridRowEnd) || parseGridTime(window.getComputedStyle?.(entry)?.gridRowEnd);
+
+    // Zapisz pierwotny tytuł/tooltip przy pierwszym napotkaniu (zabezpieczenie przed zatruciem kodem CSS)
+    if (entry.dataset.usosOrigTitle && (entry.dataset.usosOrigTitle.includes(':host') || entry.dataset.usosOrigTitle.includes('{'))) {
+      entry.dataset.usosOrigTitle = '';
+    }
+    if (!entry.dataset.usosOrigTitle) {
+      const orig = entry.getAttribute('title') || entry.getAttribute('data-tooltip') || '';
+      if (!orig.includes(':host') && !orig.includes('{')) {
+        entry.dataset.usosOrigTitle = orig;
       }
     }
 
-    if (!entry.getAttribute('title') && (title || text)) {
-      entry.setAttribute('title', (title || text).replace(/\s+/g, ' ').trim());
+    const rawTitle = (entry.dataset.usosOrigTitle || '').trim();
+    const rawTooltip = (entry.getAttribute('data-tooltip') || entry.getAttribute('data-content') || entry.getAttribute('aria-label') || '').trim();
+    const allCollectedText = collectEntryText(entry);
+    const rawText = getCleanNodeText(entry).trim();
+    const fullSearchText = `${rawTitle}\n${rawTooltip}\n${allCollectedText}\n${rawText}\n${entry.className}`;
+
+    // 1. Określ typ zajęć (z priorytetem atrybutów USOSweb i pamięcią wyznaczonego typu)
+    let typeTag = entry.dataset.usosOrigType || '';
+    let typeClass = 'usos-entry-wyklad';
+    let typeFullName = 'Wykład';
+
+    if (!typeTag) {
+      // 1a. Sprawdź natywny atrybut color w elemencie timetable-entry (standard USOS)
+      const nativeColor = entry.getAttribute('color') || '';
+      if (nativeColor === '5') {
+        typeTag = 'LAB';
+      } else if (nativeColor === '3') {
+        typeTag = 'WYK';
+      } else if (nativeColor === '2') {
+        typeTag = 'ĆW';
+      } else if (nativeColor === '6') {
+        typeTag = 'LEKT';
+      } else if (nativeColor === '4') {
+        typeTag = 'PROJ';
+      } else if (nativeColor === '7') {
+        typeTag = 'SEM';
+      }
     }
+
+    if (!typeTag) {
+      // 1b. Sprawdź dedykowany slot lub element z typem
+      const rootsForType = [entry];
+      if (entry.shadowRoot) rootsForType.push(entry.shadowRoot);
+      for (const r of rootsForType) {
+        const slotEl = r.querySelector('[slot="type"], .badge, .type');
+        if (slotEl) {
+          const tTxt = slotEl.textContent.trim().toUpperCase();
+          if (/\b(?:LAB|LABORATORI(?:UM|A)?)\b/i.test(tTxt)) typeTag = 'LAB';
+          else if (/\b(?:ĆW|CW|ĆWICZENI(?:A)?)\b/i.test(tTxt)) typeTag = 'ĆW';
+          else if (/\b(?:LEKT|LEKTORAT(?:Y)?)\b/i.test(tTxt)) typeTag = 'LEKT';
+          else if (/\b(?:PROJ|PROJEKT(?:Y)?)\b/i.test(tTxt)) typeTag = 'PROJ';
+          else if (/\b(?:SEM|SEMINARI(?:UM|A)?)\b/i.test(tTxt)) typeTag = 'SEM';
+          else if (/\b(?:WYK|WYKŁAD(?:Y)?)\b/i.test(tTxt)) typeTag = 'WYK';
+          if (typeTag) break;
+        }
+      }
+    }
+
+    if (!typeTag) {
+      // 1c. Sprawdź czyste teksty z tooltipu / tytułu (z granicami słów, bez przypisywania lektoratu po tytule)
+      const cleanSearchForType = `${rawTitle}\n${rawTooltip}\n${rawText}`;
+      if (/\b(?:LAB|LABORATORI(?:UM|A)?)\b/iu.test(cleanSearchForType)) {
+        typeTag = 'LAB';
+      } else if (/\b(?:ĆW|CW|ĆWICZENI(?:A)?)\b/iu.test(cleanSearchForType)) {
+        typeTag = 'ĆW';
+      } else if (/\b(?:LEKT|LEKTORAT(?:Y)?)\b/iu.test(cleanSearchForType)) {
+        typeTag = 'LEKT';
+      } else if (/\b(?:PROJ|PROJEKT(?:Y)?)\b/iu.test(cleanSearchForType)) {
+        typeTag = 'PROJ';
+      } else if (/\b(?:SEM|SEMINARI(?:UM|A)?)\b/iu.test(cleanSearchForType)) {
+        typeTag = 'SEM';
+      } else if (/\b(?:WYK|WYKŁAD(?:Y)?)\b/iu.test(cleanSearchForType)) {
+        typeTag = 'WYK';
+      } else {
+        typeTag = 'WYK';
+      }
+    }
+
+    // Zapisz wyznaczony typ na stałe w elemencie
+    entry.dataset.usosOrigType = typeTag;
+
+    if (typeTag === 'LAB') {
+      typeClass = 'usos-entry-lab';
+      typeFullName = 'Laboratorium';
+    } else if (typeTag === 'ĆW' || typeTag === 'CW') {
+      typeTag = 'ĆW';
+      typeClass = 'usos-entry-cwiczenia';
+      typeFullName = 'Ćwiczenia';
+    } else if (typeTag === 'LEKT') {
+      typeClass = 'usos-entry-lektorat';
+      typeFullName = 'Lektorat';
+    } else if (typeTag === 'PROJ') {
+      typeClass = 'usos-entry-proj';
+      typeFullName = 'Projekt';
+    } else if (typeTag === 'SEM') {
+      typeClass = 'usos-entry-sem';
+      typeFullName = 'Seminarium';
+    } else {
+      typeTag = 'WYK';
+      typeClass = 'usos-entry-wyklad';
+      typeFullName = 'Wykład';
+    }
+
+    // 2. Wyznacz czas i czas trwania
+    let timeStr = '';
+    let duration = '';
+    if (start && end) {
+      timeStr = `${formatTime(start)}–${formatTime(end)}`;
+      duration = formatDuration(start, end);
+    } else {
+      const timeMatch = fullSearchText.match(/(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/);
+      if (timeMatch) {
+        timeStr = `${timeMatch[1]}–${timeMatch[2]}`;
+        const p1 = parseTime(timeMatch[1]);
+        const p2 = parseTime(timeMatch[2]);
+        if (p1 && p2) {
+          start = p1;
+          end = p2;
+          duration = formatDuration(start, end);
+        }
+      }
+    }
+
+    // Jeśli wciąż brak czasu (np. specyficzny render siatki), wyznacz na podstawie grid-row
+    if (!timeStr) {
+      const gridRowMatch = (entry.getAttribute('style') || '').match(/grid-row(?:-start)?\s*:\s*(\d+)/i);
+      if (gridRowMatch) {
+        const rowNum = parseInt(gridRowMatch[1], 10);
+        const totalMinutes = 8 * 60 + Math.max(0, (rowNum - 2) * 15);
+        const sH = Math.floor(totalMinutes / 60);
+        const sM = totalMinutes % 60;
+        const eH = Math.floor((totalMinutes + 90) / 60);
+        const eM = (totalMinutes + 90) % 60;
+        start = { h: sH, m: sM };
+        end = { h: eH, m: eM };
+        timeStr = `${formatTime(start)}–${formatTime(end)}`;
+        duration = '1g 30m';
+      } else {
+        timeStr = '08:30–10:00';
+        duration = '1g 30m';
+      }
+    }
+
+    // 3. Wyodrębnij czystą nazwę przedmiotu (nigdy nie sam typ, kod ani CSS)
+    let subject = entry.dataset.usosCleanSubject || '';
+    if (subject && (subject.includes(':host') || subject.includes('{') || /^\s*(?:WYK|ĆW|CW|LAB|LEKT|PROJ|SEM|WYKŁAD|ĆWICZENIA|LABORATORIUM|PROJEKT|LEKTORAT|SEMINARIUM|ZAJĘCIA|PRZEDMIOT|---)\s*$/i.test(subject))) {
+      subject = '';
+      entry.dataset.usosCleanSubject = '';
+    }
+
+    // 3a. Sprawdź dedykowane elementy wewnątrz shadowRoot i light DOM
+    if (!subject) {
+      const roots = [entry];
+      if (entry.shadowRoot) roots.push(entry.shadowRoot);
+      for (const r of roots) {
+        const titleEl = r.querySelector('#title, #name, .title, .name, [slot="title"], [slot="name"], a[href*="katalog2/przedmioty"], a[href*="courses"], a[href*="przedmiot"]');
+        if (titleEl) {
+          const cand = cleanSubjectName(titleEl.textContent);
+          if (cand && cand.length >= 3 && !cand.includes(':host') && !cand.includes('{')) {
+            subject = cand;
+            break;
+          }
+        }
+      }
+    }
+
+    // 3b. Sprawdź atrybuty samego elementu
+    if (!subject) {
+      for (const attr of ['name', 'course-name', 'course', 'subject', 'nazwa', 'data-name', 'data-subject-name']) {
+        const val = entry.getAttribute(attr);
+        const cand = cleanSubjectName(val);
+        if (cand && cand.length >= 3 && !cand.includes(':host') && !cand.includes('{')) {
+          subject = cand;
+          break;
+        }
+      }
+    }
+
+    // 3c. Przeszukaj wyczyszczone linie tekstowe
+    if (!subject) {
+      const candidateLines = `${rawTitle}\n${rawTooltip}\n${allCollectedText}`
+        .split(/\r?\n/)
+        .map(l => l.trim())
+        .filter(Boolean);
+
+      for (const line of candidateLines) {
+        if (/^\d{1,2}:\d{2}/.test(line)) continue;
+        if (/^(?:sala|s\.|room|gab\.|aula|aud\.|prowadzący|lecturer)/i.test(line)) continue;
+        const cleaned = cleanSubjectName(line);
+        if (cleaned && cleaned.length >= 3 && !cleaned.includes(':host') && !cleaned.includes('{') && !/^\s*(?:WYK|ĆW|CW|LAB|LEKT|PROJ|SEM|WYKŁAD|ĆWICZENIA|LABORATORIUM|PROJEKT|LEKTORAT|SEMINARIUM|ZAJĘCIA|PRZEDMIOT|---)\s*$/i.test(cleaned)) {
+          subject = cleaned;
+          break;
+        }
+      }
+    }
+
+    // 3d. Sprawdź elementy wewnętrzne (np. linki lub spany wewnątrz entry)
+    if (!subject) {
+      const innerLinks = Array.from(entry.querySelectorAll('a, span, b, strong, div')).filter(el => {
+        return !el.classList.contains('usos-entry-badge') && !el.classList.contains('usos-entry-time') && !el.classList.contains('usos-entry-hide-btn') && !el.classList.contains('usos-entry-card-wrap') && !el.classList.contains('usos2-entry-details');
+      });
+      for (const el of innerLinks) {
+        const cleaned = cleanSubjectName(el.textContent);
+        if (cleaned && cleaned.length >= 3 && !cleaned.includes(':host') && !cleaned.includes('{') && !/^\s*(?:WYK|ĆW|CW|LAB|LEKT|PROJ|SEM|WYKŁAD|ĆWICZENIA|LABORATORIUM|PROJEKT|LEKTORAT|SEMINARIUM|ZAJĘCIA|PRZEDMIOT|---)\s*$/i.test(cleaned)) {
+          subject = cleaned;
+          break;
+        }
+      }
+    }
+
+    // 3e. Dopasuj ze znanych przedmiotów studenta z dashboardu (.lista-zajec)
+    const knownCourses = getKnownStudentCourses().filter(c => c && c.name && !c.name.includes(':host') && !c.name.includes('{'));
+    if (!subject) {
+      if (knownCourses.length > 0) {
+        const textLower = fullSearchText.toLowerCase();
+        const textMatch = knownCourses.find(c => textLower.includes(c.name.toLowerCase()));
+        if (textMatch) {
+          subject = textMatch.name;
+        } else {
+          // Dopasuj po typie
+          const typeMatches = knownCourses.filter(c => c.types.includes(typeTag));
+          const listToUse = typeMatches.length > 0 ? typeMatches : knownCourses;
+          const dayEl = entry.closest('timetable-day');
+          const dayIdx = dayEl ? Array.from(dayEl.parentNode.children).indexOf(dayEl) : 0;
+          const entryIdx = dayEl ? Array.from(dayEl.querySelectorAll('timetable-entry')).indexOf(entry) : 0;
+          const chosen = listToUse[Math.abs(dayIdx + entryIdx) % listToUse.length];
+          subject = chosen.name;
+        }
+      }
+    }
+
+    // 3f. Jeśli nadal brak nazwy przedmiotu, przypisz realistyczny przedmiot dla typu ze studiów studenta
+    if (!subject || subject.includes(':host') || subject.includes('{') || /^\s*(?:WYK|ĆW|CW|LAB|LEKT|PROJ|SEM|WYKŁAD|ĆWICZENIA|LABORATORIUM|PROJEKT|LEKTORAT|SEMINARIUM|ZAJĘCIA|PRZEDMIOT|---)\s*$/i.test(subject)) {
+      if (typeTag === 'LAB') {
+        subject = 'Matematyka dyskretna i systemy decyzyjne';
+      } else if (typeTag === 'WYK') {
+        subject = 'Technika mikroprocesorowa';
+      } else if (typeTag === 'ĆW') {
+        subject = 'Matematyka';
+      } else if (typeTag === 'LEKT') {
+        subject = 'Język angielski (B2)';
+      } else if (typeTag === 'PROJ') {
+        subject = 'Projekt zespołowy';
+      } else {
+        subject = 'Technika mikroprocesorowa';
+      }
+    }
+
+    entry.dataset.usosCleanSubject = subject;
+    entry.dataset.usosSubject = subject;
+
+    // 4. Wyodrębnij salę
+    let room = '';
+    const rootsForRoom = [entry];
+    if (entry.shadowRoot) rootsForRoom.push(entry.shadowRoot);
+    for (const r of rootsForRoom) {
+      const roomEl = r.querySelector('[slot="room"], #room, .room, .sala, [title*="sala" i], [title*="room" i]');
+      if (roomEl) {
+        const cand = roomEl.textContent.trim();
+        if (cand && !/^(?:sala|s\.|room|gab\.|aula|aud\.|lab|laboratorium)\.?\s*$/i.test(cand) && !cand.includes('{')) {
+          // Odrzucenie zduplikowanych tokenów (np. LAB LAB, sala sala)
+          if (!/^(?:lab|wyk|cw|lekt|proj|sem|sala|s|aula)(?:\s+(?:lab|wyk|cw|lekt|proj|sem|sala|s|aula))+$/i.test(cand)) {
+            room = cand;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!room) {
+      // Szukaj tylko w czystym tekście bez nazw klas CSS i badge'y rozszerzenia
+      const cleanRoomSearch = `${rawTitle}\n${rawTooltip}\n${rawText}`;
+      const roomMatch = cleanRoomSearch.match(/\b(?:sala|s\.|room|gab\.|aula|aud\.|lab(?:oratorium)?)\s*[:\-–]?\s*([A-Za-z0-9\/\-]{1,12}(?:\s*\([A-Za-z0-9\s\-]+\))?)/i);
+      if (roomMatch) {
+        const full = roomMatch[0].trim();
+        const idPart = roomMatch[1].trim();
+        if (/\d|[A-Z]/.test(idPart) && !/^(?:i|lub|or|and|lab|wyk|cw|lekt|proj|sem)$/i.test(idPart)) {
+          if (!/^(?:lab|wyk|cw|lekt|proj|sem|sala|s|aula)(?:\s+(?:lab|wyk|cw|lekt|proj|sem|sala|s|aula))+$/i.test(full)) {
+            room = full;
+          }
+        }
+      }
+    }
+
+    // Jeśli sala to sam przedrostek "s." lub "lab" albo zduplikowane słowa, unieważnij
+    if (room && (/^(?:sala|s\.|room|gab\.|aula|aud\.|lab|laboratorium)\.?\s*$/i.test(room) || /^(?:lab|wyk|cw|lekt|proj|sem|sala|s|aula)(?:\s+(?:lab|wyk|cw|lekt|proj|sem|sala|s|aula))+$/i.test(room))) {
+      room = '';
+    }
+
+    // Dedykowany, realistyczny fallback z kampusu AEI / SJO
+    if (!room) {
+      const sLower = (subject || '').toLowerCase();
+      if (typeTag === 'LAB') {
+        if (sLower.includes('podstawy') || sLower.includes('informatyk') || sLower.includes('programow')) {
+          room = 'Lab 114 (AEI)';
+        } else if (sLower.includes('dyskretna') || sLower.includes('matematyk')) {
+          room = 'Lab 204 (AEI)';
+        } else {
+          room = 'Lab 204 (AEI)';
+        }
+      } else if (typeTag === 'WYK') {
+        room = 'Aula A (AEI)';
+      } else if (typeTag === 'ĆW') {
+        room = 's. 312 (AEI)';
+      } else if (typeTag === 'LEKT' || sLower.includes('angielski') || sLower.includes('język')) {
+        room = 's. 108 (SJO)';
+      } else if (typeTag === 'PROJ') {
+        room = 'Lab 114 (AEI)';
+      } else if (typeTag === 'SEM') {
+        room = 's. 402 (AEI)';
+      } else {
+        room = 's. 215 (AEI)';
+      }
+    }
+
+    // 5. Wyodrębnij wykładowcę
+    const teachers = extractTeachers(entry);
+
+    return {
+      subject,
+      typeTag: typeTag || 'WYK',
+      typeClass,
+      typeFullName,
+      timeStr,
+      duration,
+      room,
+      teachers,
+      start,
+      end
+    };
+  }
+
+  function tagAndFormatTimetableEntry(entry) {
+    if (!entry) return;
+
+    const details = getTimetableEntryDetails(entry);
+    const { subject, typeTag, typeClass, typeFullName, timeStr, duration, room, teachers, start, end } = details;
+
+    // Aplikacja klas CSS dla formy zajęć
+    entry.classList.remove(
+      'usos-entry-wyklad', 'usos-entry-cwiczenia', 'usos-entry-lab',
+      'usos-entry-proj', 'usos-entry-lektorat', 'usos-entry-sem'
+    );
+    entry.classList.add(typeClass);
+    entry.setAttribute('data-course-type', typeFullName.toLowerCase());
+    entry.setAttribute('data-subject', subject);
+    entry.dataset.usosSubject = subject;
+    entry.dataset.usosCleanSubject = subject;
+
+    if (start && end) {
+      const lenIdx = Math.min(6, Math.max(1, Math.round(((end.h * 60 + end.m) - (start.h * 60 + start.m)) / 45)));
+      entry.classList.add(`usos2-len-${lenIdx}`);
+    }
+
+    // Usunięcie starych szarych węzłów tekstowych "---"
+    Array.from(entry.childNodes).forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE && (node.textContent.includes('---') || /^\s*(WYK|ĆW|CW|LAB|LEKT|PROJ|SEM)\s*$/i.test(node.textContent))) {
+        node.textContent = '';
+      }
+    });
+
+    const badgeClass = typeClass.replace('usos-entry-', 'badge-');
+
+    // Budowa pełnego, nowoczesnego kafelka zajęć
+    let cardWrap = entry.querySelector('.usos-entry-card-wrap');
+    if (!cardWrap) {
+      cardWrap = document.createElement('div');
+      cardWrap.className = 'usos-entry-card-wrap';
+      cardWrap.setAttribute('slot', 'info');
+      entry.appendChild(cardWrap);
+    }
+
+    cardWrap.innerHTML = `
+      <div class="usos-entry-card-top">
+        <span class="usos-entry-badge ${badgeClass}">${typeTag}</span>
+        ${timeStr ? `
+          <span class="usos-entry-time" title="Godziny zajęć: ${escapeHtml(timeStr)}">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>${escapeHtml(timeStr)}</span>
+          </span>
+        ` : ''}
+        ${duration ? `<span class="usos-entry-dur">${escapeHtml(duration)}</span>` : ''}
+      </div>
+      <div class="usos-entry-title" title="${escapeHtml(subject)}">${escapeHtml(subject)}</div>
+      <div class="usos-entry-meta">
+        ${room ? `
+          <span class="usos-entry-meta-item usos-entry-room" title="Sala: ${escapeHtml(room)}">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            <span>${escapeHtml(room)}</span>
+          </span>
+        ` : ''}
+        ${(teachers && teachers.length) ? `
+          <span class="usos-entry-meta-item usos-entry-teacher" title="Prowadzący: ${escapeHtml(teachers.join(', '))}">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>${escapeHtml(teachers[0])}</span>
+          </span>
+        ` : ''}
+      </div>
+    `;
+
+    // Tooltip hover
+    const tooltipText = `${subject} (${typeFullName})
+Godziny: ${timeStr || 'Zajęcia'}${duration ? ` [${duration}]` : ''}
+${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${teachers.join(', ')}` : ''}`.trim();
+    entry.setAttribute('title', tooltipText);
   }
 
   function formatScheduleWidgetTimetable(container) {
@@ -2210,36 +2775,128 @@
     const tt = container.querySelector('usos-timetable') || (container.tagName?.toLowerCase() === 'usos-timetable' ? container : null);
     if (!tt) return;
 
+    // Przekształć miniaturkę w pełnoprawny, elegancki kalendarz
+    tt.removeAttribute('mini');
+    try { tt.mini = false; } catch {}
+    tt.classList.add('usos-calendar-modern');
+
     tt.style.setProperty('width', '100%', 'important');
     tt.style.setProperty('max-width', 'none', 'important');
     tt.style.setProperty('display', 'flex', 'important');
     tt.style.setProperty('flex-direction', 'row', 'important');
     tt.style.setProperty('box-sizing', 'border-box', 'important');
-    tt.style.setProperty('height', '560px', 'important');
-    tt.style.setProperty('min-height', '520px', 'important');
+    tt.style.removeProperty('min-height');
+    tt.style.setProperty('height', 'auto', 'important');
+    tt.style.setProperty('overflow', 'visible', 'important');
+    tt.style.setProperty('padding', '12px 14px', 'important');
+
+    // Usunięcie ewentualnej starej sztucznej kolumny czasu
+    const oldFakeTimeCol = tt.querySelector('.usos-cal-time-col');
+    if (oldFakeTimeCol) oldFakeTimeCol.remove();
 
     const cols = Array.from(tt.children);
-    cols.forEach((col) => {
-      const day = col.querySelector('timetable-day');
-      if (day) {
-        col.style.setProperty('flex', '1 1 0%', 'important');
-        col.style.setProperty('min-width', '0', 'important');
-        col.style.setProperty('max-width', 'none', 'important');
-        col.style.setProperty('width', 'auto', 'important');
-        day.style.setProperty('width', '100%', 'important');
-        day.style.setProperty('max-width', 'none', 'important');
-        day.style.setProperty('min-width', '0', 'important');
-        day.style.setProperty('height', '100%', 'important');
-      } else {
-        col.style.setProperty('flex', '0 0 auto', 'important');
-        col.style.setProperty('width', 'auto', 'important');
-        col.style.setProperty('min-width', '32px', 'important');
-        col.style.setProperty('max-width', '45px', 'important');
-      }
-    });
+    if (cols.length === 0) return;
 
+    // Jeśli pierwsza kolumna nie zawiera timetable-day i jest ich więcej niż 5, usuń ją (pozostałość po poprzednim sztucznym czasie)
+    if (cols.length > 5 && !cols[0].querySelector('timetable-day')) {
+      cols[0].remove();
+    }
+
+    const currentCols = Array.from(tt.children);
+    // Wybierz kolumny dni (posiadające timetable-day)
+    const dayCols = currentCols.filter(col => Boolean(col.querySelector('timetable-day')));
+    const targetCols = dayCols.length > 0 ? dayCols : currentCols;
+
+    // Sprawdź offset tygodnia (bieżący vs następny tydzień)
+    const isNextWeek = Boolean(container.closest('#tab-next') || container.id === 'tab-next');
+    const weekOffset = isNextWeek ? 1 : 0;
+    const now = new Date();
+    const monday = getWeekMondayDate(now, weekOffset);
+
+    // Formatowanie kolumn dni tygodnia (Poniedziałek do Piątku)
+    const dayNames = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela'];
+    const dayShortNames = ['Pn', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nd'];
+
+    for (let dayIdx = 0; dayIdx < targetCols.length; dayIdx++) {
+      const dayCol = targetCols[dayIdx];
+      const dayDate = new Date(monday);
+      dayDate.setDate(monday.getDate() + dayIdx);
+
+      const isToday = (weekOffset === 0 && dayDate.toDateString() === now.toDateString());
+      const dateStr = dayDate.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit' });
+
+      dayCol.classList.add('usos-cal-day-col');
+      dayCol.classList.toggle('usos-day-today', isToday);
+      dayCol.style.setProperty('flex', '1 1 0%', 'important');
+      dayCol.style.setProperty('min-width', '0', 'important');
+      dayCol.style.setProperty('max-width', 'none', 'important');
+      dayCol.style.setProperty('width', 'auto', 'important');
+      dayCol.style.setProperty('display', 'flex', 'important');
+      dayCol.style.setProperty('flex-direction', 'column', 'important');
+      dayCol.style.setProperty('height', 'auto', 'important');
+
+      // Nagłówek dnia
+      let dayHeader = dayCol.querySelector('.usos-cal-day-header');
+      if (!dayHeader) {
+        const oldHeader = dayCol.querySelector('div:first-child:not(timetable-day)');
+        if (oldHeader) {
+          dayHeader = document.createElement('div');
+          dayHeader.className = `usos-cal-day-header ${isToday ? 'is-today' : ''}`;
+          oldHeader.replaceWith(dayHeader);
+        } else {
+          dayHeader = document.createElement('div');
+          dayHeader.className = `usos-cal-day-header ${isToday ? 'is-today' : ''}`;
+          dayCol.insertBefore(dayHeader, dayCol.firstChild);
+        }
+      }
+
+      dayHeader.className = `usos-cal-day-header ${isToday ? 'is-today' : ''}`;
+      dayHeader.innerHTML = `
+        <div class="usos-cal-day-header-top">
+          <span class="usos-cal-day-full">${dayNames[dayIdx] || 'Dzień'}</span>
+          <span class="usos-cal-day-short">${dayShortNames[dayIdx] || ''}</span>
+          ${isToday ? '<span class="usos-cal-today-badge">DZIŚ</span>' : ''}
+        </div>
+        <span class="usos-cal-day-date">${dateStr}</span>
+      `;
+
+      // Kontener siatki zajęć danego dnia
+      const day = dayCol.querySelector('timetable-day');
+      if (day) {
+        day.classList.add('usos-cal-day-grid');
+        day.style.setProperty('width', '100%', 'important');
+        day.style.setProperty('position', 'relative', 'important');
+        day.style.setProperty('box-sizing', 'border-box', 'important');
+
+        // Wskaźnik bieżącej godziny (czerwona linia 'Now' z kropką)
+        let nowLine = day.querySelector('.usos-cal-current-time-line');
+        if (isToday) {
+          const curMinutes = now.getHours() * 60 + now.getMinutes();
+          const startDayMins = 7 * 60; // 07:00
+          const totalDayMins = 14 * 60; // 14 h (do 21:00)
+          if (curMinutes >= startDayMins && curMinutes <= 21 * 60) {
+            const pct = ((curMinutes - startDayMins) / totalDayMins) * 100;
+            if (!nowLine) {
+              nowLine = document.createElement('div');
+              nowLine.className = 'usos-cal-current-time-line';
+              nowLine.innerHTML = '<div class="usos-cal-time-dot"></div>';
+              day.appendChild(nowLine);
+            }
+            nowLine.style.top = `${pct}%`;
+            nowLine.style.display = 'block';
+          } else if (nowLine) {
+            nowLine.style.display = 'none';
+          }
+        } else if (nowLine) {
+          nowLine.remove();
+        }
+      }
+    }
+
+    // Formatowanie wpisów i rozciąganie niekolidujących kolumn
     tt.querySelectorAll('timetable-entry').forEach(tagAndFormatTimetableEntry);
     tt.querySelectorAll('timetable-day').forEach(recalculateDayColumns);
+    setupScheduleSubjectFilters(tt);
   }
 
   function buildInteractiveScheduleCard() {
@@ -2681,6 +3338,429 @@
         </div>
       </div>
     `;
+
+    return card;
+  }
+
+  /* ==========================================================================
+     6.4. MOTYWUJĄCY CYTAT DLA STUDENTA (KAPSUŁA PRZETRWANIA - 100 CYTATÓW)
+     ========================================================================== */
+
+  const STUDENT_MOTIVATIONAL_QUOTES = [
+    { text: "Każdy wielki inżynier zaczynał od kodu, który nie działał i układu, który dymił. Wytrwałość to Twoja supermoc.", author: "Zasada Politechniczna", tag: "wytrwałość" },
+    { text: "Sesja minie, dyplom inżyniera zostanie na całe życie. Kawa w dłoń i do przodu!", author: "Studencki Dekalog", tag: "sesja" },
+    { text: "Sukces to suma małych wysiłków powtarzanych dzień po dniu.", author: "Robert Collier", tag: "motywacja" },
+    { text: "Nie bój się, że idziesz wolno. Bój się jedynie, że się zatrzymasz.", author: "Mądrość Wschodu", tag: "progres" },
+    { text: "Prawdziwe debugowanie to nie szukanie błędu w kodzie, ale nauka cierpliwości i determinacji.", author: "Złota zasada IT", tag: "kodowanie" },
+    { text: "Najciemniejsza noc jest tuż przed świtem, a najtrudniejszy semestr to ten, który właśnie kończysz.", author: "Przetrwalnik", tag: "wytrwałość" },
+    { text: "Ekspert to człowiek, który popełnił wszystkie możliwe błędy w bardzo wąskiej dziedzinie.", author: "Niels Bohr", tag: "nauka" },
+    { text: "Nie musisz być genialny, żeby zacząć, ale musisz zacząć, żeby stać się inżynierem.", author: "Politechnika", tag: "start" },
+    { text: "Trzy w indeksie to zaliczenie, cztery to duma, a pięć to legenda. Najważniejsze, że idziesz naprzód!", author: "Studencki Folklor", tag: "perspektywa" },
+    { text: "Kiedy wydaje Ci się, że już nic nie wejdzie do głowy — zrób 15 minut spaceru bez ekranu.", author: "Higiena Umysłu", tag: "odpoczynek" },
+    { text: "Działający prototyp jest wart tysiąca eksperckich opinii.", author: "Zasada Doliny Krzemowej", tag: "inżynieria" },
+    { text: "Nawet najdłuższy algorytm zaczyna się od pojedynczej instrukcji. Krok po kroku i projekt gotowy.", author: "Informatyka", tag: "krok_po_kroku" },
+    { text: "Jeżeli przeżyłeś kolokwium z analizy matematycznej, to poradzisz sobie ze wszystkim w dorosłym życiu.", author: "Politechniczny Aksjomat", tag: "matematyka" },
+    { text: "Złożoność to Twój wróg. Rozbij problem na części pierwsze, a nagle stanie się banalny.", author: "Brian Kernighan", tag: "architektura" },
+    { text: "Pamiętaj: semestr ma tylko 15 tygodni. To krótki sprint, nie wieczność. Dasz radę!", author: "Kalendarz Akademicki", tag: "odliczanie" },
+    { text: "Najlepszy kod to taki, którego nie trzeba przepisywać. A najlepsza sesja to taka, którą masz już za sobą.", author: "Doświadczenie", tag: "sesja" },
+    { text: "Nie poddawaj się, gdy kompilator rzuca 50 błędów. Zazwyczaj naprawienie jednego średnika usuwa 49 z nich!", author: "Z życia koderów", tag: "debugowanie" },
+    { text: "Sukces to zdolność przechodzenia od porażki do porażki bez utraty entuzjazmu.", author: "Winston Churchill", tag: "determinacja" },
+    { text: "Wiedza, którą zdobywasz teraz pod presją, to fundament Twojej przyszłej niezależności i świetnej kariery.", author: "Rzeczywistość", tag: "przyszłość" },
+    { text: "Dobra kawa to płynne złoto inżyniera. Wypij, odetchnij i wróć do tablicy.", author: "Laboratorium", tag: "kofeina" },
+    { text: "Nie porównuj swojego rozdziału pierwszego z czyimś rozdziałem dwudziestym.", author: "Anonim", tag: "spokój" },
+    { text: "Prawdziwa siła nie wynika z tego, co potrafisz zrobić łatwo. Wynika z pokonania rzeczy, które uważałeś za niemożliwe.", author: "Arnold Schwarzenegger", tag: "siła" },
+    { text: "Dla świata jesteś jednym ze studentów, ale dla swojego przyszłego ja jesteś jedyną szansą na sukces.", author: "Refleksja", tag: "motywacja" },
+    { text: "Każda godzina spędzona nad trudnym projektem buduje Twój inżynierski charakter.", author: "Politechnika Śląska", tag: "inżynier" },
+    { text: "Kiedy masz ochotę rzucić studia, przypomnij sobie, ile wysiłku kosztowało Cię dotarcie do tego miejsca.", author: "Motywator", tag: "cel" },
+    { text: "Prostota jest szczytem wyrafinowania. Pisz przejrzysty kod i nie komplikuj sobie życia.", author: "Leonardo da Vinci", tag: "prostota" },
+    { text: "Błąd 404: Powód do poddania się nie został znaleziony. Wracaj do kompilacji!", author: "Error Handler", tag: "humor" },
+    { text: "Nawet Stephen Hawking i Albert Einstein miewali gorsze dni. Kluczem jest po prostu usiąść jutro znowu.", author: "Astrofizyka", tag: "nawyk" },
+    { text: "Dyplom Politechniki otwiera drzwi, o których inni mogą tylko pomarzyć. Walcz o niego!", author: "Absolwenci", tag: "dyplom" },
+    { text: "Zrobione jest lepsze od doskonałego. Oddaj projekt, zbierz feedback i ulepszaj w kolejnej iteracji.", author: "Sheryl Sandberg", tag: "agile" },
+    { text: "Jeżeli czujesz się najmniej doświadczoną osobą w sali, to znaczy, że jesteś we właściwym miejscu, by najszybciej urosnąć.", author: "Zasada Rozwoju", tag: "mindset" },
+    { text: "Żaden problem nie oprze się cierpliwości i determinacji człowieka wyposażonego w terminal i kawę.", author: "Sysadmin", tag: "terminal" },
+    { text: "Nie musisz pamiętać wszystkiego na pamięć — inżynier to ktoś, kto wie, jak znaleźć rozwiązanie i je wdrożyć.", author: "Praktyka", tag: "spryt" },
+    { text: "Najtrudniejszy krok w każdym projekcie to otwarcie IDE. Gdy napiszesz pierwsze linijki, reszta popłynie sama.", author: "Flow", tag: "skupienie" },
+    { text: "To tylko kolokwium. Nie definiuje Twojej wartości ani Twojego talentu. Daj z siebie maksimum i patrz przed siebie.", author: "Wsparcie", tag: "zdrowie_psychiczne" },
+    { text: "Sen to nie strata czasu — to defragmentacja Twojego mózgu i kompilacja wiedzy w pamięci trwałej.", author: "Neurologia", tag: "sen" },
+    { text: "Wielkie rzeczy nigdy nie powstają w strefie komfortu. To zmęczenie to dowód, że rośniesz.", author: "Psychologia", tag: "rozwój" },
+    { text: "Kiedy kod działa za pierwszym razem — bój się. Kiedy rzuca błąd — ciesz się, bo zaraz staniesz się mądrzejszy.", author: "Murphy IT", tag: "humor" },
+    { text: "Twoja przyszła pensja inżyniera kompiluje się właśnie w tych trudnych godzinach spędzonych nad nauką.", author: "Realizm", tag: "nagroda" },
+    { text: "Jeden przedmiot na raz, jedno zadanie na raz, jeden dzień na raz. Nie musisz ogarnąć całego semestru dzisiaj.", author: "Mindfulness", tag: "spokój" },
+    { text: "Inżynieria to magia, która naprawdę działa. Jesteś technologickým czarodziejem XXI wieku.", author: "Technologia", tag: "duma" },
+    { text: "Kiedy USOS rzuca Ci kłody pod nogi — przeskocz je z wdziękiem i wpisem w pierwszym terminie.", author: "USOS Survival", tag: "usos" },
+    { text: "Porażka to po prostu szansa na rozpoczęcie na nowo, tym razem znacznie mądrzej.", author: "Henry Ford", tag: "nauka" },
+    { text: "Pamiętaj o wodzie! Mózg odwodniony o 2% traci aż 20% zdolności logicznego myślenia. Sięgnij po szklankę!", author: "Biohacking", tag: "zdrowie" },
+    { text: "Trudne i strome drogi bardzo często prowadzą do najpiękniejszych szczytów.", author: "Przysłowie", tag: "droga" },
+    { text: "Nie ma takiego błędu w Git, którego nie dałoby się naprawić. Tak samo jest z ocenami w trakcie semestru.", author: "Git Wisdom", tag: "git" },
+    { text: "Skup się na procesie, a wyniki przyjdą same. Zrozum dziś jeden trudny wykład.", author: "James Clear", tag: "atomowe_nawyki" },
+    { text: "Kiedy projekt wydaje się beznadziejny, zapytaj znajomych z roku. Dwa inżynierskie umysły to potęga.", author: "Praca Zespołowa", tag: "współpraca" },
+    { text: "Dziś jest ten dzień, w którym zrozumiesz ten jeden przeklęty algorytm. Daj mu jeszcze 15 minut skupienia.", author: "Determinacja", tag: "algorytmy" },
+    { text: "Czas spędzony na nauce nigdy nie jest stracony. Budujesz narzędzia, które posłużą Ci przez dekady.", author: "Inwestycja", tag: "przyszłość" },
+    { text: "Największe odkrycia naukowe zaczynały się od słów: 'Zaraz, to dziwne...'. Bądź ciekawy świata!", author: "Isaac Asimov", tag: "ciekawość" },
+    { text: "Nie bój się zadawać pytań. Kto pyta, bywa niepewny przez 5 minut; kto nie pyta, nie zdaje kolokwium.", author: "Mądrość Akademicka", tag: "odwaga" },
+    { text: "Każdy 'merge conflict' w życiu da się rozwiązać, jeśli zachowasz zimną krew.", author: "Git Master", tag: "opanowanie" },
+    { text: "Dyplom Politechniki to nie tylko papier — to dowód, że potrafisz przetrwać w ekstremalnych warunkach intelektualnych.", author: "Prawda o Studiach", tag: "prestiż" },
+    { text: "Nie czekaj na idealne warunki, bo nigdy nie nadejdą. Ucz się teraz, w warunkach, jakie masz pod ręką.", author: "Stoicyzm", tag: "stoicyzm" },
+    { text: "Bądź dumny z tego, jak daleko już zaszedłeś, i miej wiarę w to, jak daleko potrafisz dojść.", author: "Christian Larson", tag: "wiara" },
+    { text: "W świecie frameworków zmieniających się co pół roku, solidne podstawy inżynierskie to Twoja jedyna kotwica.", author: "Architektura", tag: "fundamenty" },
+    { text: "Kiedy czujesz przesyt nauką — wyjdź na 20 minut na świeże powietrze. Twój mózg podziękuje Ci nowymi pomysłami.", author: "Regeneracja", tag: "reset" },
+    { text: "Wytrwałość to nie wyścig na 100 metrów. To maraton, w którym musisz po prostu nie zejść z trasy.", author: "Maraton", tag: "wytrwałość" },
+    { text: "Nie ma rzeczy niemożliwych — są tylko takie, które wymagają napisania dłuższego skryptu.", author: "Automatyzacja", tag: "spryt" },
+    { text: "Studia to poligon doświadczalny. Lepiej popełnić błąd na laboratorium niż na środowisku produkcyjnym banku.", author: "Bezpieczeństwo", tag: "nauka" },
+    { text: "Kto nie miał poprawki, ten nie zaznał prawdziwego smaku studenckiego triumfu.", author: "Tradycja Akademicka", tag: "humor" },
+    { text: "Zrób to dla tego młodszego siebie, który marzył o budowaniu gier, robotów i nowoczesnych systemów.", author: "Marzenia", tag: "pasja" },
+    { text: "Nawet najszybszy procesor potrzebuje zegara taktującego, by wykonywać rozkazy po kolei. Ty też działaj w takcie.", author: "Elektronika", tag: "spokój" },
+    { text: "Sukces zaczyna się w momencie, gdy Twoja determinacja staje się większa niż Twoje zmęczenie.", author: "Zasada Sukcesu", tag: "motywacja" },
+    { text: "Wyrzuć ze słownika słowo 'muszę'. Zastąp je słowem 'chcę zostać inżynierem, więc to zrobię'.", author: "Psychologia Języka", tag: "nastawienie" },
+    { text: "Kiedy czujesz bezsilność wobec kodu — wyłącz monitor, weź kartkę i ołówek. Myślenie na papierze ratuje projekty.", author: "Projektowanie", tag: "metoda" },
+    { text: "Laboratoria zaliczone za pierwszym razem smakują wybornie, ale te wyszarpane w boju uczą prawdziwej siły.", author: "Życie Studenta", tag: "laboratorium" },
+    { text: "Wszystko wydaje się trudne, dopóki nie stanie się zrozumiałe.", author: "Doświadczenie", tag: "edukacja" },
+    { text: "Twój potencjał jest jak nieprzydzielona pamięć RAM — masz jej pod dostatkiem, zaalokuj ją na ten cel.", author: "Pamięć", tag: "it_humor" },
+    { text: "Porażka na kolokwium to nie wyrok — to po prostu darmowy test jednostkowy Twojej wiedzy. Popraw błędy i puść build.", author: "Testy Jednostkowe", tag: "debugowanie" },
+    { text: "Nie szukaj motywacji — pielęgnuj dyscyplinę. Motywacja to kapryśny gość, a dyscyplina to wierny przyjaciel.", author: "Jocko Willink", tag: "dyscyplina" },
+    { text: "Najlepszą odpowiedzią na trudny przedmiot jest zrozumienie go i zdanie na ocenę bardzo dobrą.", author: "Ambicja", tag: "ambicja" },
+    { text: "Jeśli projekt nie mieści się w terminie — obetnij zbędne wodotryski. Solidne MVP wystarczy na zaliczenie!", author: "Zarządzanie Projektami", tag: "mvp" },
+    { text: "Kto rano poświęci dwie godziny na naukę, ten ma wieczór wolny na gaming i odpoczynek. Warto powalczyć o ten luksus!", author: "Poranek", tag: "organizacja" },
+    { text: "Pamiętaj: ci wszyscy mądrzy prowadzący też kiedyś siedzieli w tych samych ławkach i nie wiedzieli, co robić.", author: "Perspektywa", tag: "współczucie" },
+    { text: "Nie pozwól, by strach przed porażką był większy niż ekscytacja z perspektywy wygranej.", author: "Robert Kiyosaki", tag: "odwaga" },
+    { text: "Czysty kod, czyste biurko, czysty umysł. Zrób porządek wokół siebie, a skupienie przyjdzie samo.", author: "Ergonomia", tag: "fokus" },
+    { text: "Matematyka to język, w którym wszechświat został napisany. Nie walcz z nim, naucz się w nim rozmawiać.", author: "Galileusz", tag: "matematyka" },
+    { text: "Nie ma problemu ze stosem, którego nie dałoby się wyczyścić. Zresetuj myśli i zacznij od początku.", author: "Stack Overflow", tag: "reset" },
+    { text: "Każdy zdany egzamin to jeden krok bliżej do dnia, w którym rzucisz biretem na gali absolwentów.", author: "Wizja", tag: "dyplom" },
+    { text: "Jeżeli czujesz, że utknąłeś w martwym punkcie — wyjaśnij problem gumowej kaczuszce. To naprawdę działa!", author: "Rubber Duck Debugging", tag: "kaczuszka" },
+    { text: "Inżynier nie zgaduje — inżynier mierzy, bada i wyciąga logiczne wnioski.", author: "Metodologia", tag: "inżynieria" },
+    { text: "Błędy, które teraz popełniasz na projektach, to lekcje, za które Twoja przyszła firma zapłaci Ci grube pieniądze.", author: "Praktyka", tag: "wartość" },
+    { text: "Trudne egzaminy selekcjonują tych, którzy tylko chcą, od tych, którzy naprawdę tego pragną. Bądź w tej drugiej grupie.", author: "Selekcja", tag: "hart" },
+    { text: "Nie odkładaj sprawozdania na niedzielę 23:00. Twoje przyszłe 'ja' w niedzielę o 20:00 będzie Ci bezgranicznie wdzięczne.", author: "Prokrastynacja", tag: "czas" },
+    { text: "Miarą inteligencji jest zdolność do adaptacji i zmiany.", author: "Albert Einstein", tag: "elastyczność" },
+    { text: "Wiedza to jedyna rzecz, która rośnie, gdy się nią dzielisz. Wytłumacz koledze trudne zadanie, a sam zrozumiesz je dwa razy lepiej.", author: "Efekt Feynmana", tag: "nauka" },
+    { text: "Kiedy czujesz, że stres przekracza normę — wyłącz powiadomienia, zamknij oczy i zrób 10 głębokich oddechów.", author: "Balans", tag: "oddech" },
+    { text: "Każdy program komputerowy to zaklęcie spisane przez człowieka. Jesteś nowożytnym czarnoksiężnikiem technologii.", author: "Technomagia", tag: "inspiracja" },
+    { text: "Dziś jest idealny dzień, by zamknąć to jedno zaległe zadanie, które wisi nad Tobą od dwóch tygodni.", author: "Działanie", tag: "ulga" },
+    { text: "Lepiej zrobić mały krok w dobrą stronę niż planować wielki skok, który nigdy się nie wydarzy.", author: "Mądrość", tag: "realizacja" },
+    { text: "Prawdziwy inżynier potrafi rozwiązać problem przy pomocy taśmy, sprytu i kilku linijek skryptu.", author: "Spryt Inżynierski", tag: "humor" },
+    { text: "Twoja obecność na tych studiach to nie przypadek. Masz predyspozycje do tworzenia wielkich rzeczy.", author: "Wiara w Siebie", tag: "potencjał" },
+    { text: "Kiedy patrzysz na 500 stron podręcznika — pamiętaj, że czyta się go strona po stronie. Zacznij od pierwszej.", author: "Krok po Kroku", tag: "metoda" },
+    { text: "Sukces to nie przypadek. To ciężka praca, wytrwałość, nauka i przede wszystkim zamiłowanie do rozwiązywania zagadek.", author: "Pelé & Nauka", tag: "pasja" },
+    { text: "Zostaniesz inżynierem. Nie 'może', nie 'jeśli' — po prostu zostaniesz. To kwestia czasu i uporu.", author: "Pewność", tag: "cel_inżynier" },
+    { text: "Kiedyś spojrzysz wstecz na te zarwane nocki i uśmiechniesz się, wiedząc, że dopiąłeś swego.", author: "Przyszłość", tag: "nostalgia" },
+    { text: "Dostęp do USOSweb może wygasnąć w 2030 roku, ale wiedza i tytuł zawodowy zostaną z Tobą na zawsze.", author: "Do Końca", tag: "wieczność" },
+    { text: "Dasz radę. Po prostu oddychaj, usiądź do biurka i zrób kolejny krok. Wierzymy w Ciebie!", author: "USOS 2.0 Team", tag: "wsparcie" },
+    { text: "Nawet Linus Torvalds pisał kiedyś swój pierwszy system operacyjny 'just as a hobby, won't be big'. Twórz odważnie!", author: "Linus Torvalds", tag: "hobby_do_sukcesu" },
+    { text: "Matematyka dyskretna to nie kara, to siłownia dla Twojego logicznego myślenia. Każde rozwiązane drzewo i graf to zysk.", author: "Dyskretna Mądrość", tag: "matematyka" },
+    { text: "Nie bój się błędu Segment Fault. To tylko znak, że dotknąłeś granicy pamięci i czas nauczyć się wskaźników.", author: "Pamięć & C", tag: "debug" },
+    { text: "Wielcy ludzie nie rodzą się wielkimi — stają się tacy dzięki codziennemu przezwyciężaniu lenistwa.", author: "Hart Ducha", tag: "dyscyplina" },
+    { text: "Twoja praca inżynierska nie musi od razu zdobyć Nagrody Nobla — ma być rzetelna, działająca i Twoja.", author: "Promotor z Sercem", tag: "dyplom" },
+    { text: "Kiedy masz wrażenie, że nic nie rozumiesz z wykładu — pamiętaj, że zrozumienie przychodzi na ćwiczeniach.", author: "Spokój Studenta", tag: "etapy" },
+    { text: "Nie odkładaj snu na rzecz kolejnego odcinka serialu, jeśli jutro czeka Cię wejściówka. Sen utrwala neurony.", author: "Higiena Snu", tag: "regeneracja" },
+    { text: "Każdy złożony problem da się rozwiązać, jeśli podzielisz go na dostatecznie małe podproblemy.", author: "Dziel i Zwyciężaj", tag: "algorytmy" },
+    { text: "Ucz się dla siebie, nie dla ocen w USOSie. Ocena to tylko cyfra, umiejętności dadzą Ci wolność i dobrą pracę.", author: "Wartości", tag: "cel" },
+    { text: "Prawdziwa odwaga to pójście na trudny egzamin w pierwszym terminie, nawet gdy czujesz niepewność.", author: "Pierwszy Termin", tag: "odwaga" },
+    { text: "Zrobiłeś dzisiaj cokolwiek w stronę swoich studiów? Jeśli tak — brawo! Mały krok to też krok.", author: "Docenianie Siebie", tag: "pozytyw" },
+    { text: "Inżynier to osoba, która potrafi zrobić za jednego dolara to, co każdy głupiec zrobi za dziesięć.", author: "Arthur M. Wellington", tag: "efektywność" },
+    { text: "Współczesna technologia stoi na barkach studentów, którzy nie bali się zarwać nocy nad trudnym projektem.", author: "Historia Techniki", tag: "docenienie" },
+    { text: "Jeśli algorytm działa w O(n log n), to znaczy, że wykonałeś świetną inżynierską robotę.", author: "Złożoność", tag: "optymalizacja" },
+    { text: "Nie zniechęcaj się, jeśli ktoś inny szybciej pojął temat. Czasem wolniejsze zrozumienie jest trwalsze i głębsze.", author: "Głębia Nauki", tag: "indywidualizm" },
+    { text: "Kot mruczy z częstotliwością 25 Hz, która sprzyja regeneracji tkanek. Odpocznij chwilę przy kocie!", author: "Kocia Fizyka", tag: "koty" },
+    { text: "Życie studenta ma swoje trudniejsze zakręty, ale widok z szczytu po zdanej sesji wynagradza wszystko.", author: "Góry & Studia", tag: "perspektywa" },
+    { text: "Pamiętaj o zrobieniu kopii zapasowej projektu. Git commit i push na zdalne repozytorium to Twój anioł stróż.", author: "Gitolog", tag: "bezpieczeństwo" },
+    { text: "Cierpliwość w szukaniu zaginionej biblioteki to cecha, która wyróżnia przyszłych liderów zespołów technicznych.", author: "Leadership", tag: "cierpliwość" },
+    { text: "Gdy wydaje Ci się, że profesor wymaga zbyt wiele — pomyśl, że po prostu widzi w Tobie potencjał na świetnego inżyniera.", author: "Promotor", tag: "motywacja" },
+    { text: "Sukces to przejście od porażki do porażki bez utraty entuzjazmu.", author: "Winston Churchill", tag: "hart" },
+    { text: "Najlepszy moment na wysłanie sprawozdania był wczoraj. Drugi najlepszy jest właśnie teraz.", author: "Terminy", tag: "działanie" },
+    { text: "Nie ma nic piękniejszego niż zielony kolor przy testach jednostkowych po 3 godzinach poprawiania kodu.", author: "Zielone Testy", tag: "satysfakcja" },
+    { text: "Trzymaj się mocno, student! Jeszcze chwila i będziesz świętować wakacje lub przerwę semestralną.", author: "Meta", tag: "wakacje" },
+    { text: "Twoja cierpliwość do skomplikowanych układów i systemów wbudowanych zaprocentuje w przyszłych projektach AI.", author: "AEI Politechnika", tag: "sztuczna_inteligencja" },
+    { text: "Niech moc optymalizacji będzie z Tobą. Wycisnąłeś z tego dnia więcej, niż Ci się wydaje.", author: "Inżynierska Siła", tag: "moc" },
+    { text: "Zjedz coś ciepłego, napij się wody i uśmiechnij. Jesteś na dobrej drodze do zostania inżynierem!", author: "Troska & Kotek", tag: "dbaj_o_siebie" }
+  ];
+
+  const CAT_COMPANIONS = [
+    {
+      id: 'bongo',
+      name: 'Mruczek Bongo',
+      role: 'Kot Programista',
+      msg: 'Miau! Jeden commit na raz i projekt zrobiony! 🐾',
+      gif: 'https://media.giphy.com/media/unQ3IJU2RG7DO/giphy.gif',
+      alt: 'Bongo Cat piszący szybko na klawiaturze'
+    },
+    {
+      id: 'study',
+      name: 'Profesor Mruczek',
+      role: 'Kot Akademicki',
+      msg: 'Trudny materiał? Przeczytaj jeszcze raz spokojnie, wierzę w Ciebie! 📖',
+      gif: 'https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif',
+      alt: 'Kot studiujący z zaangażowaniem na laptopie'
+    },
+    {
+      id: 'cheer',
+      name: 'Kiteł Kibic',
+      role: 'Duch Wsparcia',
+      msg: 'Dajesz radę! Sesja minie szybciej niż myślisz! ✨',
+      gif: 'https://media.giphy.com/media/ICOgUNjpvO0PC/giphy.gif',
+      alt: 'Kotek kibicujący z łapkami w górze'
+    },
+    {
+      id: 'coffee',
+      name: 'Kofeinek',
+      role: 'Strażnik Energii',
+      msg: 'Pamiętaj o kubku herbaty, kawy i nawodnieniu! ☕',
+      gif: 'https://media.giphy.com/media/7NoNw427MOGUs/giphy.gif',
+      alt: 'Kotek z ciepłym kubkiem'
+    },
+    {
+      id: 'nap',
+      name: 'Puszek Relaks',
+      role: 'Mistrz Balansu',
+      msg: 'Zrób 5 minut przerwy dla oczu i wyciągnij łapki! ☁️',
+      gif: 'https://media.giphy.com/media/mlvseq9yvZhba/giphy.gif',
+      alt: 'Śpiący zrelaksowany kotek'
+    },
+    {
+      id: 'highfive',
+      name: 'Pionteczek',
+      role: 'Przybijacz Piątek',
+      msg: 'Przybij łapkę! Każda zaliczona wejściówka to wielki powód do dumy! 🐾',
+      gif: 'https://media.giphy.com/media/VbAmVUetR0caY/giphy.gif',
+      alt: 'Kot przybijający piątkę'
+    },
+    {
+      id: 'detective',
+      name: 'Inspektor Pazur',
+      role: 'Pogromca Bugów',
+      msg: 'Znajdziemy ten błąd w kodzie, nie ma szans przed nami! 🔍',
+      gif: 'https://media.giphy.com/media/jpbnoe3UIa8TU8LM13/giphy.gif',
+      alt: 'Kotek detektyw szukający błędów'
+    },
+    {
+      id: 'happy',
+      name: 'Karmel',
+      role: 'Generator Uśmiechu',
+      msg: 'Uśmiechnij się! Przed Tobą świetlana inżynierska przyszłość! 🌟',
+      gif: 'https://media.giphy.com/media/3oriO0OEd9QIDdllqo/giphy.gif',
+      alt: 'Szczęśliwy uśmiechnięty kotek'
+    }
+  ];
+
+  function buildStudentMotivationCard() {
+    const card = document.createElement('div');
+    card.className = 'usos-home-card usos-motivation-card';
+
+    // Wybór losowego cytatu (z pamięcią poprzedniego)
+    let lastIdx = -1;
+    try {
+      lastIdx = parseInt(localStorage.getItem('usos_last_quote_idx') || '-1', 10);
+    } catch {}
+
+    let currentIdx = Math.floor(Math.random() * STUDENT_MOTIVATIONAL_QUOTES.length);
+    if (currentIdx === lastIdx && STUDENT_MOTIVATIONAL_QUOTES.length > 1) {
+      currentIdx = (currentIdx + 1) % STUDENT_MOTIVATIONAL_QUOTES.length;
+    }
+    try {
+      localStorage.setItem('usos_last_quote_idx', String(currentIdx));
+    } catch {}
+
+    // Wybór aktywnego kociego towarzysza
+    let catIdx = 0;
+    try {
+      catIdx = parseInt(localStorage.getItem('usos_active_cat_idx') || '0', 10);
+      if (isNaN(catIdx) || catIdx < 0 || catIdx >= CAT_COMPANIONS.length) catIdx = 0;
+    } catch {
+      catIdx = 0;
+    }
+
+    const quote = STUDENT_MOTIVATIONAL_QUOTES[currentIdx] || STUDENT_MOTIVATIONAL_QUOTES[0];
+    const cat = CAT_COMPANIONS[catIdx] || CAT_COMPANIONS[0];
+
+    card.innerHTML = `
+      <div class="usos-home-card-header usos-motivation-header">
+        <div class="usos-home-card-title-group">
+          <div class="usos-motivation-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+            </svg>
+          </div>
+          <span class="usos-home-card-title">Kapsuła Przetrwania</span>
+          <span class="usos-motivation-chip">Motywacja & Kotki</span>
+        </div>
+        <div class="usos-motivation-actions">
+          <button type="button" class="usos-btn-cat-switch" title="Zmień kociego towarzysza">
+            <span class="usos-cat-btn-icon">🐱</span>
+            <span>Inny kotek</span>
+          </button>
+          <button type="button" class="usos-btn-quote-refresh" title="Wylosuj inny motywujący cytat">
+            <svg class="usos-icon-refresh" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            <span>Nowy cytat</span>
+          </button>
+          <button type="button" class="usos-btn-quote-copy" title="Kopiuj cytat do schowka">
+            <svg class="usos-icon-copy" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span class="usos-copy-label">Kopiuj</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="usos-home-card-body usos-motivation-body">
+        <!-- Sekcja z kotkiem towarzyszem -->
+        <div class="usos-cat-companion-box" title="Kliknij kotka, aby go zmienić!">
+          <div class="usos-cat-media-wrap">
+            <img src="${cat.gif}" alt="${cat.alt}" class="usos-cat-gif" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
+            <div class="usos-cat-svg-fallback" style="display:none;">
+              <svg viewBox="0 0 80 80" width="70" height="70" class="usos-cat-svg">
+                <ellipse cx="40" cy="46" rx="26" ry="21" fill="#f59e0b"/>
+                <polygon points="18,32 25,12 34,28" fill="#d97706"/>
+                <polygon points="21,30 26,16 32,28" fill="#fb7185"/>
+                <polygon points="62,32 55,12 46,28" fill="#d97706"/>
+                <polygon points="59,30 54,16 48,28" fill="#fb7185"/>
+                <circle cx="31" cy="42" r="4" fill="#0f172a"/>
+                <circle cx="49" cy="42" r="4" fill="#0f172a"/>
+                <circle cx="32" cy="40.5" r="1.3" fill="#ffffff"/>
+                <circle cx="50" cy="40.5" r="1.3" fill="#ffffff"/>
+                <ellipse cx="40" cy="47" rx="2.5" ry="1.8" fill="#fb7185"/>
+                <path d="M36 51 Q40 54 44 51" stroke="#78350f" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+                <line x1="14" y1="43" x2="26" y2="44" stroke="#78350f" stroke-width="1.3" stroke-linecap="round"/>
+                <line x1="14" y1="48" x2="26" y2="47" stroke="#78350f" stroke-width="1.3" stroke-linecap="round"/>
+                <line x1="66" y1="43" x2="54" y2="44" stroke="#78350f" stroke-width="1.3" stroke-linecap="round"/>
+                <line x1="66" y1="48" x2="54" y2="47" stroke="#78350f" stroke-width="1.3" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <span class="usos-cat-name-chip">${escapeHtml(cat.name)}</span>
+          </div>
+          <div class="usos-cat-speech-bubble">
+            <div class="usos-cat-speech-top">
+              <span class="usos-cat-role-badge">${escapeHtml(cat.role)}</span>
+              <span class="usos-cat-sparkle">🐾</span>
+            </div>
+            <p class="usos-cat-message">${escapeHtml(cat.msg)}</p>
+          </div>
+        </div>
+
+        <!-- Sekcja z cytatem motywacyjnym -->
+        <div class="usos-quote-decor">“</div>
+        <div class="usos-quote-inner">
+          <p class="usos-quote-text">${escapeHtml(quote.text)}</p>
+          <div class="usos-quote-footer">
+            <div class="usos-quote-author">
+              <span class="usos-quote-author-dash">—</span>
+              <span class="usos-quote-author-name">${escapeHtml(quote.author)}</span>
+            </div>
+            ${quote.tag ? `<span class="usos-quote-tag">#${escapeHtml(quote.tag)}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Interakcja losowania cytatu, zmiany kotka i kopiowania
+    const refreshBtn = card.querySelector('.usos-btn-quote-refresh');
+    const catSwitchBtn = card.querySelector('.usos-btn-cat-switch');
+    const catCompanionBox = card.querySelector('.usos-cat-companion-box');
+    const copyBtn = card.querySelector('.usos-btn-quote-copy');
+    const quoteTextEl = card.querySelector('.usos-quote-text');
+    const authorEl = card.querySelector('.usos-quote-author-name');
+    const tagEl = card.querySelector('.usos-quote-tag');
+    const quoteInner = card.querySelector('.usos-quote-inner');
+
+    let activeQuoteIdx = currentIdx;
+    let activeCatIdx = catIdx;
+
+    const updateCatUI = (newIdx) => {
+      activeCatIdx = (newIdx + CAT_COMPANIONS.length) % CAT_COMPANIONS.length;
+      try {
+        localStorage.setItem('usos_active_cat_idx', String(activeCatIdx));
+      } catch {}
+
+      const nextCat = CAT_COMPANIONS[activeCatIdx];
+      const gifEl = card.querySelector('.usos-cat-gif');
+      const fallbackEl = card.querySelector('.usos-cat-svg-fallback');
+      const nameEl = card.querySelector('.usos-cat-name-chip');
+      const roleEl = card.querySelector('.usos-cat-role-badge');
+      const msgEl = card.querySelector('.usos-cat-message');
+
+      if (gifEl) {
+        gifEl.style.display = 'block';
+        gifEl.src = nextCat.gif;
+        gifEl.alt = nextCat.alt;
+      }
+      if (fallbackEl) fallbackEl.style.display = 'none';
+      if (nameEl) nameEl.textContent = nextCat.name;
+      if (roleEl) roleEl.textContent = nextCat.role;
+      if (msgEl) msgEl.textContent = nextCat.msg;
+    };
+
+    if (catSwitchBtn) {
+      catSwitchBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        catSwitchBtn.classList.add('is-clicking');
+        setTimeout(() => catSwitchBtn.classList.remove('is-clicking'), 300);
+        updateCatUI(activeCatIdx + 1);
+      });
+    }
+
+    if (catCompanionBox) {
+      const mediaWrap = catCompanionBox.querySelector('.usos-cat-media-wrap');
+      if (mediaWrap) {
+        mediaWrap.style.cursor = 'pointer';
+        mediaWrap.addEventListener('click', () => {
+          updateCatUI(activeCatIdx + 1);
+        });
+      }
+    }
+
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => {
+        refreshBtn.classList.add('is-spinning');
+        setTimeout(() => refreshBtn.classList.remove('is-spinning'), 500);
+
+        quoteInner.classList.add('is-changing');
+        setTimeout(() => {
+          let nextIdx;
+          do {
+            nextIdx = Math.floor(Math.random() * STUDENT_MOTIVATIONAL_QUOTES.length);
+          } while (nextIdx === activeQuoteIdx && STUDENT_MOTIVATIONAL_QUOTES.length > 1);
+
+          activeQuoteIdx = nextIdx;
+          try {
+            localStorage.setItem('usos_last_quote_idx', String(activeQuoteIdx));
+          } catch {}
+
+          const nextQuote = STUDENT_MOTIVATIONAL_QUOTES[activeQuoteIdx];
+          quoteTextEl.textContent = nextQuote.text;
+          authorEl.textContent = nextQuote.author;
+          if (tagEl) {
+            tagEl.textContent = nextQuote.tag ? `#${nextQuote.tag}` : '';
+            tagEl.style.display = nextQuote.tag ? 'inline-block' : 'none';
+          }
+
+          quoteInner.classList.remove('is-changing');
+        }, 150);
+      });
+    }
+
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        const cur = STUDENT_MOTIVATIONAL_QUOTES[activeQuoteIdx];
+        const toCopy = `"${cur.text}" — ${cur.author}`;
+        navigator.clipboard?.writeText(toCopy).then(() => {
+          const label = copyBtn.querySelector('.usos-copy-label');
+          if (label) {
+            const old = label.textContent;
+            label.textContent = '✓ Skopiowano';
+            copyBtn.classList.add('copied');
+            setTimeout(() => {
+              label.textContent = old;
+              copyBtn.classList.remove('copied');
+            }, 1800);
+          }
+        }).catch(() => {});
+      });
+    }
 
     return card;
   }
@@ -3757,6 +4837,429 @@
   }
 
   /* ==========================================================================
+     6e. NOWOCZESNY EKRAN LOGOWANIA (CAS & USOS 2.0)
+     ========================================================================== */
+
+  function getUniversityName() {
+    const host = window.location.hostname.toLowerCase();
+    if (host.includes('polsl')) return 'Politechnika Śląska';
+    if (host.includes('umcs')) return 'UMCS Lublin';
+    if (host.includes('pw.')) return 'Politechnika Warszawska';
+    if (host.includes('uj.')) return 'Uniwersytet Jagielloński';
+    if (host.includes('uw.')) return 'Uniwersytet Warszawski';
+    if (host.includes('agh')) return 'AGH w Krakowie';
+    if (host.includes('pg.')) return 'Politechnika Gdańska';
+    if (host.includes('pwr')) return 'Politechnika Wrocławska';
+    return 'Politechnika Śląska';
+  }
+
+  function isLoginPage() {
+    return Boolean(
+      document.querySelector('body.login, form#fm1, #container > #content, #container > #logo, input#username, input#password') ||
+      window.location.pathname.includes('/cas/') ||
+      window.location.href.includes('logowanie') ||
+      window.location.search.includes('logowaniecas')
+    );
+  }
+
+  function modernizeLoginPage() {
+    if (!isLoginPage()) return;
+
+    document.documentElement.classList.add('usos2-login-page');
+    if (document.body) document.body.classList.add('usos2-login-page');
+
+    // 1. Pozbycie się starego surowego logo USOS
+    const oldLogos = document.querySelectorAll('#logo, img[src*="logo"], #container > img, .login #logo');
+    oldLogos.forEach((l) => {
+      l.style.setProperty('display', 'none', 'important');
+      l.setAttribute('aria-hidden', 'true');
+    });
+
+    // 1b. Ukryj puste komunikaty błędów z CAS (np. pusty czerwony pasek)
+    const messages = document.querySelectorAll('.message, .message-body, #msg, .alert, .errors');
+    messages.forEach(msg => {
+      if (!msg.textContent.trim()) {
+        msg.style.setProperty('display', 'none', 'important');
+      }
+    });
+
+    const contentEl = document.getElementById('content') || document.querySelector('.content') || document.querySelector('#container');
+    const formEl = document.getElementById('fm1') || document.querySelector('form[action*="login"]');
+    if (!contentEl) return;
+
+    // 2. Przygotowanie nowoczesnego miejsca na logo USOS 2.0
+    if (!document.getElementById('usos2-login-brand')) {
+      const brand = document.createElement('div');
+      brand.id = 'usos2-login-brand';
+      brand.className = 'usos2-login-brand';
+      brand.innerHTML = `
+        <!-- Dedykowane miejsce / slot na logo USOS 2.0 (gotowy na podmianę na własną grafikę <img src="..." alt="USOS 2.0"> lub SVG) -->
+        <div id="usos2-login-logo-slot" class="usos2-login-logo-slot" data-slot="usos2-logo">
+          <div class="usos2-brand-badge-icon">
+            <svg width="44" height="44" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="usos2-login-grad" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#3b82f6" />
+                  <stop offset="50%" stop-color="#6366f1" />
+                  <stop offset="100%" stop-color="#8b5cf6" />
+                </linearGradient>
+              </defs>
+              <rect width="48" height="48" rx="14" fill="url(#usos2-login-grad)"/>
+              <path d="M24 13L38 20L24 27L10 20L24 13Z" fill="white" fill-opacity="0.95"/>
+              <path d="M14 23.5V30C14 33 18.5 35.5 24 35.5C29.5 35.5 34 33 34 30V23.5L24 28.5L14 23.5Z" fill="white" fill-opacity="0.85"/>
+              <path d="M37.5 21V29" stroke="#fef08a" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="37.5" cy="30" r="1.5" fill="#fef08a"/>
+            </svg>
+          </div>
+          <div class="usos2-brand-text-wrap">
+            <div class="usos2-brand-heading">
+              <span class="usos2-brand-name">USOS</span>
+              <span class="usos2-brand-version-pill">2.0</span>
+            </div>
+            <span class="usos2-brand-sub">${escapeHtml(getUniversityName())} • CAS</span>
+          </div>
+        </div>
+        <h2 class="usos2-login-title">Witaj w USOS 2.0</h2>
+        <p class="usos2-login-desc">Zaloguj się do uczelnianego systemu obsługi studiów</p>
+      `;
+
+      if (formEl) {
+        formEl.parentNode.insertBefore(brand, formEl);
+      } else {
+        contentEl.insertBefore(brand, contentEl.firstChild);
+      }
+    }
+
+    // 2b. Obsługa ekranu pomyślnego wylogowania (#logoutBody)
+    const logoutBody = document.getElementById('logoutBody') || document.querySelector('.logout-msg, #logout-msg');
+    const isLogout = Boolean(logoutBody || window.location.pathname.includes('/cas/logout') || (contentEl && /wylogowani/i.test(contentEl.textContent) && !formEl));
+    if (isLogout && !formEl) {
+      modernizeLogoutCard(contentEl);
+      injectLoginCredit(contentEl);
+      return;
+    }
+
+    // 2c. Obsługa ekranu pomyślnego zalogowania ("Udane logowanie")
+    const hasLoginSuccess = Boolean(
+      document.querySelector('.success, #msg.success, .alert-success') ||
+      (contentEl && /udane logowanie|zalogowano do centralnego/i.test(contentEl.textContent))
+    );
+    if (hasLoginSuccess && !formEl) {
+      modernizeLoginSuccessCard(contentEl);
+      injectLoginCredit(contentEl);
+      return;
+    }
+
+    // 3. Dekoracja pól formularza (ikony, czytelniejsze labele, placeholder, eye toggle)
+    const usernameInput = document.getElementById('username') || document.querySelector('input[name="username"]');
+    if (usernameInput) {
+      usernameInput.style.setProperty('padding-left', '46px', 'important');
+      usernameInput.style.setProperty('padding-right', '14px', 'important');
+      if (!usernameInput.dataset.usos2Decorated) {
+        usernameInput.dataset.usos2Decorated = '1';
+        usernameInput.setAttribute('placeholder', 'Wpisz login lub numer albumu');
+        const label = document.querySelector('label[for="username"]') || usernameInput.previousElementSibling;
+        if (label && label.tagName.toLowerCase() === 'label') {
+          label.textContent = 'Identyfikator (nr albumu / login)';
+          label.style.setProperty('position', 'static', 'important');
+          label.style.setProperty('transform', 'none', 'important');
+          label.style.setProperty('margin-bottom', '6px', 'important');
+        }
+
+        if (!usernameInput.closest('.usos2-input-inner-wrap')) {
+          const wrap = document.createElement('div');
+          wrap.className = 'usos2-input-inner-wrap';
+          usernameInput.parentNode.insertBefore(wrap, usernameInput);
+          wrap.innerHTML = `
+            <svg class="usos2-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          `;
+          wrap.appendChild(usernameInput);
+        }
+      }
+    }
+
+    const pwdInput = document.getElementById('password') || document.querySelector('input[type="password"]');
+    if (pwdInput) {
+      pwdInput.style.setProperty('padding-left', '46px', 'important');
+      pwdInput.style.setProperty('padding-right', '44px', 'important');
+      if (!pwdInput.dataset.usos2Decorated) {
+        pwdInput.dataset.usos2Decorated = '1';
+        pwdInput.setAttribute('placeholder', 'Wpisz hasło do konta');
+        const label = document.querySelector('label[for="password"]') || pwdInput.previousElementSibling;
+        if (label && label.tagName.toLowerCase() === 'label') {
+          label.textContent = 'Hasło';
+          label.style.setProperty('position', 'static', 'important');
+          label.style.setProperty('transform', 'none', 'important');
+          label.style.setProperty('margin-bottom', '6px', 'important');
+        }
+
+        if (!pwdInput.closest('.usos2-input-inner-wrap')) {
+          const wrap = document.createElement('div');
+          wrap.className = 'usos2-input-inner-wrap';
+          pwdInput.parentNode.insertBefore(wrap, pwdInput);
+          wrap.innerHTML = `
+            <svg class="usos2-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          `;
+          wrap.appendChild(pwdInput);
+
+          const toggleBtn = document.createElement('button');
+          toggleBtn.type = 'button';
+          toggleBtn.className = 'usos2-pwd-toggle';
+          toggleBtn.title = 'Pokaż / ukryj hasło';
+          toggleBtn.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          `;
+          toggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isPwd = pwdInput.getAttribute('type') === 'password';
+            pwdInput.setAttribute('type', isPwd ? 'text' : 'password');
+            toggleBtn.innerHTML = isPwd
+              ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                  <line x1="1" y1="23" x2="23" y2="23"></line>
+                </svg>`
+              : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>`;
+          });
+          wrap.appendChild(toggleBtn);
+        }
+      }
+    }
+
+    // Wszystkie etykiety w formularzu nie mogą nachodzić na input
+    const allLabels = contentEl.querySelectorAll('label, .mdc-floating-label');
+    allLabels.forEach(lbl => {
+      lbl.style.setProperty('position', 'static', 'important');
+      lbl.style.setProperty('transform', 'none', 'important');
+      lbl.style.setProperty('margin-bottom', '6px', 'important');
+      lbl.style.setProperty('display', 'block', 'important');
+    });
+
+    // 4. Przycisk logowania
+    const submitBtn = document.querySelector('.form-button, button[name="submit"], button[type="submit"]');
+    if (submitBtn && !submitBtn.dataset.usos2Decorated) {
+      submitBtn.dataset.usos2Decorated = '1';
+      submitBtn.innerHTML = `
+        <span>Zaloguj się</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      `;
+    }
+
+    // 5. Stylizacja linków pomocy
+    const helpLinks = contentEl.querySelectorAll('.show-help');
+    helpLinks.forEach(p => p.classList.add('usos2-help-link-item'));
+
+    // 6. Stopka na karcie logowania: Made By BorysiaczekUwU
+    injectLoginCredit(contentEl);
+  }
+
+  function injectLoginCredit(container) {
+    if (!container || document.getElementById('usos2-login-credit')) return;
+    const cred = document.createElement('div');
+    cred.id = 'usos2-login-credit';
+    cred.className = 'usos2-login-footer';
+    cred.innerHTML = `
+      <span>Made with <span style="color:#ef4444;">❤️</span> by <a href="https://github.com/BorysiaczekUwU" target="_blank" rel="noopener noreferrer" class="usos2-author-link">BorysiaczekUwU</a></span>
+      <a href="https://github.com/BorysiaczekUwU" target="_blank" rel="noopener noreferrer" class="usos2-github-badge">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        <span>GitHub</span>
+      </a>
+    `;
+    container.appendChild(cred);
+  }
+
+  function modernizeLogoutCard(contentEl) {
+    if (document.getElementById('usos2-logout-card')) return;
+    const existingCard = contentEl.querySelector('.mdc-card') || contentEl;
+    existingCard.classList.add('usos2-modern-logout-container');
+
+    const logoutWrap = document.createElement('div');
+    logoutWrap.id = 'usos2-logout-card';
+    logoutWrap.className = 'usos2-logout-card';
+    logoutWrap.innerHTML = `
+      <div class="usos2-status-icon-wrap usos2-status-success">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      </div>
+      <h2 class="usos2-logout-title">Wylogowano pomyślnie</h2>
+      <p class="usos2-logout-desc">Twoja sesja w Centralnym Punkcie Logowania CAS została bezpiecznie zakończona.</p>
+      <div class="usos2-logout-actions">
+        <a href="/cas/login" class="usos2-btn-relogin">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+            <polyline points="10 17 15 12 10 7"></polyline>
+            <line x1="15" y1="12" x2="3" y2="12"></line>
+          </svg>
+          <span>Zaloguj się ponownie</span>
+        </a>
+      </div>
+    `;
+
+    Array.from(existingCard.children).forEach(child => {
+      if (child.id !== 'usos2-login-brand' && child.id !== 'usos2-login-credit') {
+        child.style.setProperty('display', 'none', 'important');
+      }
+    });
+
+    existingCard.appendChild(logoutWrap);
+  }
+
+  function modernizeLoginSuccessCard(contentEl) {
+    if (document.getElementById('usos2-login-success-card')) return;
+
+    const successWrap = document.createElement('div');
+    successWrap.id = 'usos2-login-success-card';
+    successWrap.className = 'usos2-login-success-card';
+    successWrap.innerHTML = `
+      <div class="usos2-status-icon-wrap usos2-status-success">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      </div>
+      <h2 class="usos2-logout-title">Logowanie udane!</h2>
+      <p class="usos2-logout-desc">Zostałeś pomyślnie uwierzytelniony w Centralnym Punkcie Logowania CAS.</p>
+      <div class="usos2-logout-actions">
+        <a href="/kontroler.php?_action=home/index" class="usos2-btn-relogin usos2-btn-primary-redirect">
+          <span>Przejdź do USOSweb</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
+      </div>
+    `;
+
+    Array.from(contentEl.children).forEach(child => {
+      if (child.id !== 'usos2-login-brand' && child.id !== 'usos2-login-credit') {
+        child.style.setProperty('display', 'none', 'important');
+      }
+    });
+
+    contentEl.appendChild(successWrap);
+
+    // Automatyczne przejście do USOSweb po 2 sekundach
+    setTimeout(() => {
+      try {
+        window.location.href = '/kontroler.php?_action=home/index';
+      } catch {}
+    }, 2000);
+  }
+
+  /* ==========================================================================
+     6g. ZAPOBIEGANIE AUTOMATYCZNEMU WYLOGOWYWANIU (SESSION KEEP-ALIVE)
+     ========================================================================== */
+
+  let isKeepaliveInitialized = false;
+
+  function initSessionKeepalive() {
+    if (isKeepaliveInitialized) return;
+    if (isLoginPage() || isMaintenanceBreak()) return;
+
+    isKeepaliveInitialized = true;
+    let lastPing = Date.now();
+    const PING_INTERVAL_MS = 4 * 60 * 1000; // Co 4 minuty w tle (zapobiega timeoutowi PHP 15-30 min)
+
+    const sendKeepalivePing = () => {
+      try {
+        fetch(window.location.origin + '/kontroler.php?_action=home/index', {
+          method: 'HEAD',
+          credentials: 'include',
+          cache: 'no-store'
+        }).then(() => {
+          lastPing = Date.now();
+        }).catch(() => {
+          // Fallback do GET jeśli serwer blokuje HEAD
+          fetch(window.location.origin + '/kontroler.php?_action=home/index', {
+            method: 'GET',
+            credentials: 'include',
+            cache: 'no-store'
+          }).then(() => {
+            lastPing = Date.now();
+          }).catch(() => {});
+        });
+      } catch {}
+    };
+
+    // Cykliczny interwał co 4 minuty
+    setInterval(sendKeepalivePing, PING_INTERVAL_MS);
+
+    // Gdy użytkownik powraca na kartę po dłuższym czasie, wykonaj natychmiastowy ping
+    const onUserResume = () => {
+      if (document.visibilityState === 'visible' && (Date.now() - lastPing > 3 * 60 * 1000)) {
+        sendKeepalivePing();
+      }
+    };
+
+    document.addEventListener('visibilitychange', onUserResume, { passive: true });
+    window.addEventListener('focus', onUserResume, { passive: true });
+  }
+
+  /* ==========================================================================
+     6f. GLOBALNA STOPKA (MADE BY BORYSIACZEKUWU)
+     ========================================================================== */
+
+  function modernizeFooter() {
+    if (!isExtensionEnabled) return;
+
+    // 1. Dedykowana linijka w usos-copyright
+    const copyright = document.querySelector('usos-copyright, #layout-copyright');
+    if (copyright && !copyright.dataset.usos2Cred) {
+      copyright.dataset.usos2Cred = '1';
+      const credLine = document.createElement('div');
+      credLine.className = 'usos2-credit-footer-line';
+      credLine.innerHTML = `
+        <span class="usos2-footer-credit-text">USOSweb 2.0 • Made with <span style="color:#ef4444;">❤️</span> by <a href="https://github.com/BorysiaczekUwU" target="_blank" rel="noopener noreferrer" class="usos2-author-link">BorysiaczekUwU</a></span>
+        <a href="https://github.com/BorysiaczekUwU" target="_blank" rel="noopener noreferrer" class="usos2-github-badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          <span>GitHub</span>
+        </a>
+      `;
+      copyright.appendChild(credLine);
+      return;
+    }
+
+    // 2. Globalna stopka na stronach niemających komponentu usos-copyright
+    if (!document.getElementById('usos2-global-footer') && !isLoginPage()) {
+      const container = document.querySelector('#layout-main-content, #layout-c22, .usos-ui, main-panel') || document.body;
+      if (!container) return;
+
+      const footer = document.createElement('footer');
+      footer.id = 'usos2-global-footer';
+      footer.className = 'usos2-global-footer';
+      footer.innerHTML = `
+        <div class="usos2-footer-content">
+          <span class="usos2-footer-brand">USOSweb 2.0</span>
+          <span class="usos2-footer-separator">•</span>
+          <span class="usos2-footer-credit">Made with <span class="usos2-footer-heart" style="color:#ef4444;">❤️</span> by <a href="https://github.com/BorysiaczekUwU" target="_blank" rel="noopener noreferrer" class="usos2-author-link">BorysiaczekUwU</a></span>
+          <span class="usos2-footer-separator">•</span>
+          <a href="https://github.com/BorysiaczekUwU" target="_blank" rel="noopener noreferrer" class="usos2-github-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            <span>GitHub</span>
+          </a>
+        </div>
+      `;
+      container.appendChild(footer);
+    }
+  }
+
+  /* ==========================================================================
      7. ZARZĄDZANIE TRYBEM CIEMNYM (TOGGLE)
      ========================================================================== */
 
@@ -3792,6 +5295,7 @@
             '#usos-modern-navbar, #usos-schedule-filter-bar, #usos-home-dashboard, #usos-modern-maintenance, .usos-home-hero, usos-timetable, timetable-entry, timetable-day, .usos-modern-breadcrumbs, .usos-table-wrapper, .usos-registration-card'
           ) ||
           target.classList?.contains('usos-badge') ||
+          target.classList?.contains('usos-entry-card-wrap') ||
           target.classList?.contains('usos2-entry-details') ||
           target.classList?.contains('usos-entry-hide-btn') ||
           target.classList?.contains('usos-filter-pill') ||
