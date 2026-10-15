@@ -1293,7 +1293,7 @@
     }
     try {
       localStorage.setItem('usos_hidden_subjects', JSON.stringify(hiddenList));
-    } catch {}
+    } catch { }
   }
 
   /**
@@ -1366,8 +1366,8 @@
       const isHidden = normalizedHidden.includes(subj);
       pill.classList.toggle('active', !isHidden);
       pill.classList.toggle('hidden-subject', isHidden);
-      pill.innerHTML = isHidden 
-        ? `<span class="icon" style="opacity:0.7">⊘</span> <span>${escapeHtml(subj)}</span>` 
+      pill.innerHTML = isHidden
+        ? `<span class="icon" style="opacity:0.7">⊘</span> <span>${escapeHtml(subj)}</span>`
         : `<span class="icon" style="color:#60a5fa">✓</span> <span>${escapeHtml(subj)}</span>`;
     });
 
@@ -1477,8 +1477,8 @@
         const pill = document.createElement('button');
         pill.className = `usos-filter-pill ${isHidden ? 'hidden-subject' : 'active'}`;
         pill.dataset.subject = subj;
-        pill.innerHTML = isHidden 
-          ? `<span class="icon" style="opacity:0.7">⊘</span> <span>${subj}</span>` 
+        pill.innerHTML = isHidden
+          ? `<span class="icon" style="opacity:0.7">⊘</span> <span>${subj}</span>`
           : `<span class="icon" style="color:#60a5fa">✓</span> <span>${subj}</span>`;
 
         pill.addEventListener('click', (e) => {
@@ -2314,7 +2314,7 @@
       cachedStudentCourses = list;
       try {
         localStorage.setItem('usos_known_courses', JSON.stringify(list));
-      } catch {}
+      } catch { }
       return list;
     }
 
@@ -2325,7 +2325,7 @@
         cachedStudentCourses = stored;
         return stored;
       }
-    } catch {}
+    } catch { }
 
     // Semestralne przedmioty fallback dla kierunku Sztuczna inteligencja (AEI Politechnika Śląska)
     const defaults = [
@@ -2777,7 +2777,7 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
 
     // Przekształć miniaturkę w pełnoprawny, elegancki kalendarz
     tt.removeAttribute('mini');
-    try { tt.mini = false; } catch {}
+    try { tt.mini = false; } catch { }
     tt.classList.add('usos-calendar-modern');
 
     tt.style.setProperty('width', '100%', 'important');
@@ -3482,7 +3482,7 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
       name: 'Mruczek Bongo',
       role: 'Kot Programista',
       msg: 'Miau! Jeden commit na raz i projekt zrobiony! 🐾',
-      gif: 'https://media.giphy.com/media/unQ3IJU2RG7DO/giphy.gif',
+      gif: 'https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExcjVldmF6aWZncGFiNjhwZHUyaGZhemx3MHY2ZTVwY2tjejMxeWFibyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3oKIPnAiaMCws8nOsE/giphy.gif',
       alt: 'Bongo Cat piszący szybko na klawiaturze'
     },
     {
@@ -3498,7 +3498,7 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
       name: 'Kiteł Kibic',
       role: 'Duch Wsparcia',
       msg: 'Dajesz radę! Sesja minie szybciej niż myślisz! ✨',
-      gif: 'https://media.giphy.com/media/ICOgUNjpvO0PC/giphy.gif',
+      gif: 'https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExejgwbjY4aHEzMWZiYmxtNHR4OGVkNGF3eTg0c3N6OWs4OHV5ZnNnMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/NFA61GS9qKZ68/giphy.gif',
       alt: 'Kotek kibicujący z łapkami w górze'
     },
     {
@@ -3506,7 +3506,7 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
       name: 'Kofeinek',
       role: 'Strażnik Energii',
       msg: 'Pamiętaj o kubku herbaty, kawy i nawodnieniu! ☕',
-      gif: 'https://media.giphy.com/media/7NoNw427MOGUs/giphy.gif',
+      gif: 'https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExaWVuNGY2bWRrcnRmbDQwbHBnZDhnazJxNmd3bDg3OXNsYWEzNTVlNCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/7vUwiZ4MJRNDy/giphy.gif',
       alt: 'Kotek z ciepłym kubkiem'
     },
     {
@@ -3522,7 +3522,7 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
       name: 'Pionteczek',
       role: 'Przybijacz Piątek',
       msg: 'Przybij łapkę! Każda zaliczona wejściówka to wielki powód do dumy! 🐾',
-      gif: 'https://media.giphy.com/media/VbAmVUetR0caY/giphy.gif',
+      gif: 'https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExdWszczRldXdoaGtrcDV3M2VwZGJjODVvM2tvMXRhbWpkcDlzM2pucCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/PjRo6vL5m9212/giphy.gif',
       alt: 'Kot przybijający piątkę'
     },
     {
@@ -3530,7 +3530,7 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
       name: 'Inspektor Pazur',
       role: 'Pogromca Bugów',
       msg: 'Znajdziemy ten błąd w kodzie, nie ma szans przed nami! 🔍',
-      gif: 'https://media.giphy.com/media/jpbnoe3UIa8TU8LM13/giphy.gif',
+      gif: 'https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExcHY4OGRrZDNmY3czbjQyMjRua3Q3NmVlcWtocmxqbXU4OWN0aXZvNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/IgYoeD6sdfIlJDAMed/giphy.gif',
       alt: 'Kotek detektyw szukający błędów'
     },
     {
@@ -3551,7 +3551,7 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
     let lastIdx = -1;
     try {
       lastIdx = parseInt(localStorage.getItem('usos_last_quote_idx') || '-1', 10);
-    } catch {}
+    } catch { }
 
     let currentIdx = Math.floor(Math.random() * STUDENT_MOTIVATIONAL_QUOTES.length);
     if (currentIdx === lastIdx && STUDENT_MOTIVATIONAL_QUOTES.length > 1) {
@@ -3559,7 +3559,7 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
     }
     try {
       localStorage.setItem('usos_last_quote_idx', String(currentIdx));
-    } catch {}
+    } catch { }
 
     // Wybór aktywnego kociego towarzysza
     let catIdx = 0;
@@ -3674,7 +3674,7 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
       activeCatIdx = (newIdx + CAT_COMPANIONS.length) % CAT_COMPANIONS.length;
       try {
         localStorage.setItem('usos_active_cat_idx', String(activeCatIdx));
-      } catch {}
+      } catch { }
 
       const nextCat = CAT_COMPANIONS[activeCatIdx];
       const gifEl = card.querySelector('.usos-cat-gif');
@@ -3728,7 +3728,7 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
           activeQuoteIdx = nextIdx;
           try {
             localStorage.setItem('usos_last_quote_idx', String(activeQuoteIdx));
-          } catch {}
+          } catch { }
 
           const nextQuote = STUDENT_MOTIVATIONAL_QUOTES[activeQuoteIdx];
           quoteTextEl.textContent = nextQuote.text;
@@ -3758,7 +3758,7 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
               copyBtn.classList.remove('copied');
             }, 1800);
           }
-        }).catch(() => {});
+        }).catch(() => { });
       });
     }
 
@@ -5158,7 +5158,7 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
     setTimeout(() => {
       try {
         window.location.href = '/kontroler.php?_action=home/index';
-      } catch {}
+      } catch { }
     }, 2000);
   }
 
@@ -5192,9 +5192,9 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
             cache: 'no-store'
           }).then(() => {
             lastPing = Date.now();
-          }).catch(() => {});
+          }).catch(() => { });
         });
-      } catch {}
+      } catch { }
     };
 
     // Cykliczny interwał co 4 minuty
