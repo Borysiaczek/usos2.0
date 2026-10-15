@@ -5728,6 +5728,694 @@ html[data-usos-modern="enabled"] .login .show-help a:hover {
   transform: translateY(-1px) !important;
 }
 
+/* ==========================================================================
+   10. USOS 7 WEB COMPONENTS - KAFELKI MODUŁÓW (DLA STUDENTÓW / KATALOG)
+   Pełna modernizacja kafelków, naprawa białego hovera w trybie ciemnym
+   ========================================================================== */
+
+usos-module-link-tile-container {
+  display: flex !important;
+  flex-flow: row wrap !important;
+  gap: 1.25rem !important;
+  margin: 1.25rem 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+usos-module-link-tile {
+  display: block !important;
+  background: var(--bg-card) !important;
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-lg, 12px) !important;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.08)) !important;
+  color: var(--text-main) !important;
+  min-width: 280px !important;
+  flex: 1 1 calc(33.333% - 1.25rem) !important;
+  max-width: calc(33.333% - 0.85rem) !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, background-color 0.2s ease !important;
+}
+
+@media (max-width: 1100px) {
+  usos-module-link-tile {
+    flex: 1 1 calc(50% - 1.25rem) !important;
+    max-width: calc(50% - 0.65rem) !important;
+  }
+}
+
+@media (max-width: 680px) {
+  usos-module-link-tile {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+usos-module-link-tile:hover {
+  background: var(--bg-card-hover) !important;
+  background-color: var(--bg-card-hover) !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--primary) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Wymuszenie ciemnego motywu na kafelkach (likwidacja białego tła #fafafb) */
+html[data-theme="dark"] usos-module-link-tile {
+  background: #111827 !important;
+  background-color: #111827 !important;
+  border-color: #26334d !important;
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] usos-module-link-tile:hover {
+  background: #1e293b !important;
+  background-color: #1e293b !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.5), 0 0 0 1px #3b82f6 !important;
+}
+
+/* Slotted tytuły i opisy w kafelkach */
+usos-module-link-tile [slot="title"],
+usos-module-link-tile span[slot="title"],
+usos-module-link-tile h2,
+usos-module-link-tile h3 {
+  font-family: var(--font-sans) !important;
+  color: var(--text-main) !important;
+  font-weight: 650 !important;
+  font-size: 1.05rem !important;
+  line-height: 1.35 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0.35rem !important;
+  transition: color 0.15s ease !important;
+}
+
+usos-module-link-tile:hover [slot="title"],
+usos-module-link-tile:hover span[slot="title"] {
+  color: var(--primary) !important;
+}
+
+html[data-theme="dark"] usos-module-link-tile [slot="title"],
+html[data-theme="dark"] usos-module-link-tile span[slot="title"] {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] usos-module-link-tile:hover [slot="title"],
+html[data-theme="dark"] usos-module-link-tile:hover span[slot="title"] {
+  color: #60a5fa !important;
+}
+
+usos-module-link-tile [slot="text"],
+usos-module-link-tile p[slot="text"],
+usos-module-link-tile p {
+  font-family: var(--font-sans) !important;
+  color: var(--text-muted) !important;
+  font-size: 0.85rem !important;
+  line-height: 1.45 !important;
+  margin: 0 !important;
+}
+
+html[data-theme="dark"] usos-module-link-tile [slot="text"],
+html[data-theme="dark"] usos-module-link-tile p[slot="text"] {
+  color: #94a3b8 !important;
+}
+
+/* ==========================================================================
+   11. PASEK FILTROWANIA I WYSZUKIWARKA MODUŁÓW (DLA_STUD)
+   ========================================================================== */
+
+.usos-module-search-filter {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl, 16px);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: all 0.2s ease;
+}
+
+.usos-module-search-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.usos-module-search-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.usos-module-search-icon-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--primary-light);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.usos-module-search-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 750;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.usos-module-search-subtitle {
+  margin: 0.15rem 0 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.usos-module-count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  background: var(--bg-card-hover);
+  color: var(--text-muted);
+  border: 1px solid var(--border-default);
+  transition: all 0.2s ease;
+}
+
+.usos-module-count-badge.is-filtering {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.usos-module-search-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.usos-module-search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.usos-module-search-input-icon {
+  position: absolute;
+  left: 1rem;
+  color: var(--text-subtle);
+  pointer-events: none;
+}
+
+.usos-module-search-input {
+  width: 100% !important;
+  background: var(--bg-input) !important;
+  color: var(--text-main) !important;
+  border: 1.5px solid var(--border-default) !important;
+  border-radius: 12px !important;
+  padding: 0.75rem 2.75rem 0.75rem 2.85rem !important;
+  font-family: var(--font-sans) !important;
+  font-size: 0.92rem !important;
+  outline: none !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.18s ease !important;
+  box-sizing: border-box !important;
+}
+
+.usos-module-search-input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--ring-color) !important;
+}
+
+.usos-module-search-clear {
+  position: absolute;
+  right: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: var(--border-default);
+  color: var(--text-muted);
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.usos-module-search-clear:hover {
+  background: var(--text-muted);
+  color: var(--bg-card);
+}
+
+.usos-module-quick-tags {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.usos-module-tag-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.usos-module-tag-btn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.usos-module-tag-btn.active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+/* Pusty stan dla modułów */
+.usos-modules-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: var(--bg-card);
+  border: 1.5px dashed var(--border-default);
+  border-radius: var(--radius-xl, 16px);
+  margin: 1.5rem 0;
+}
+
+.usos-modules-empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.usos-modules-empty-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 0.35rem;
+}
+
+.usos-modules-empty-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  max-width: 380px;
+  margin: 0 0 1.25rem 0;
+}
+
+.usos-btn-clear-empty-filter {
+  padding: 0.5rem 1.15rem;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.usos-btn-clear-empty-filter:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   12. SKRÓTY KLAWISZOWE (MODAL & PRZYCISK W NAVBARZE)
+   ========================================================================== */
+
+.usos-shortcuts-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-default);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.usos-shortcuts-btn:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.usos-shortcuts-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.usos-shortcuts-modal-backdrop.is-open {
+  opacity: 1;
+}
+
+.usos-shortcuts-modal-card {
+  width: 100%;
+  max-width: 540px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl, 16px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  transform: scale(0.96) translateY(10px);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.usos-shortcuts-modal-backdrop.is-open .usos-shortcuts-modal-card {
+  transform: scale(1) translateY(0);
+}
+
+.usos-shortcuts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-muted);
+}
+
+.usos-shortcuts-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.usos-shortcuts-icon {
+  font-size: 1.4rem;
+}
+
+.usos-shortcuts-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 750;
+  color: var(--text-main);
+}
+
+.usos-shortcuts-subtitle {
+  margin: 0.15rem 0 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.usos-shortcuts-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.15s ease;
+}
+
+.usos-shortcuts-close:hover {
+  background: var(--border-default);
+  color: var(--text-main);
+}
+
+.usos-shortcuts-grid {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.5rem;
+  gap: 0.5rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.usos-shortcut-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.usos-shortcut-item:hover {
+  background: var(--bg-card-hover);
+}
+
+.usos-shortcut-desc {
+  font-size: 0.88rem;
+  font-weight: 550;
+  color: var(--text-main);
+}
+
+.usos-shortcut-keys {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+kbd {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-main);
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+.usos-shortcuts-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.5rem;
+  border-top: 1px solid var(--border-default);
+  background: var(--bg-muted);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.usos-shortcuts-footer a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 650;
+}
+
+.usos-shortcuts-btn-ok {
+  padding: 0.45rem 1.15rem;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+  font-weight: 650;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.usos-shortcuts-btn-ok:hover {
+  background: var(--primary-hover);
+}
+
+/* ==========================================================================
+   13. PRZYCISK PŁYWAJĄCY: WRÓĆ NA GÓRĘ (BACK TO TOP)
+   ========================================================================== */
+
+.usos-back-to-top {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 46px;
+  height: 46px;
+  border-radius: 9999px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  color: var(--text-main);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(12px) scale(0.9);
+  pointer-events: none;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.usos-back-to-top.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.usos-back-to-top:hover {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+  box-shadow: 0 12px 28px -2px rgba(37, 99, 235, 0.4);
+  transform: translateY(-3px) scale(1.05);
+}
+
+/* ==========================================================================
+   14. SYSTEM POWIADOMIEŃ TOAST
+   ========================================================================== */
+
+.usos-toast-container {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 1000000;
+  pointer-events: none;
+}
+
+.usos-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: 9999px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  color: var(--text-main);
+  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.35);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(14px) scale(0.95);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
+}
+
+.usos-toast.is-showing {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.usos-toast.is-hiding {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+}
+
+.usos-toast-icon {
+  font-size: 1rem;
+}
+
+/* ==========================================================================
+   15. INTERAKTYWNY KOTEK (SPARKLE ANIMACJA & KLIKALNOŚĆ)
+   ========================================================================== */
+
+.usos-cat-companion-box {
+  position: relative;
+  transition: transform 0.18s ease;
+}
+
+.usos-cat-companion-box:hover {
+  transform: translateY(-2px);
+}
+
+.usos-cat-companion-box.is-clicking {
+  transform: scale(0.98);
+}
+
+.usos-cat-sparkle-float {
+  position: absolute;
+  pointer-events: none;
+  font-size: 1.5rem;
+  animation: usosFloatSparkle 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  z-index: 10;
+}
+
+@keyframes usosFloatSparkle {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-16px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-38px) scale(1);
+  }
+}
+
+/* ==========================================================================
+   16. CLICK-TO-COPY DLA SALI I PRZEDMIOTÓW
+   ========================================================================== */
+
+.usos-upcoming-room-chip,
+.usos-entry-room,
+.usos-plan-cell-room {
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.usos-upcoming-room-chip:hover,
+.usos-entry-room:hover,
+.usos-plan-cell-room:hover {
+  filter: brightness(1.1) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
 
 
 

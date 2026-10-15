@@ -37,6 +37,7 @@
     if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
       applyThemeState(true, false);
       runModernizer();
+      initGlobalEnhancements();
       return;
     }
 
@@ -51,6 +52,7 @@
         startDOMObserver();
         scheduleShadowPasses();
         initSessionKeepalive();
+        initGlobalEnhancements();
       }
     });
 
@@ -148,6 +150,7 @@
       modernizeHeadings();
       modernizeRegistrationCalendar();
       modernizeHomeDashboard();
+      modernizeStudentPortal();
       modernizeFooter();
       cleanLegacyInlineColors();
     } catch (err) {
@@ -217,6 +220,27 @@
     // Prawa strona: Przełącznik Dark Mode, Dane użytkownika (Borys Rogowski), Wylogowanie
     const navRight = document.createElement('div');
     navRight.className = 'usos-modern-nav-right';
+
+    // Przycisk Skróty klawiszowe
+    const shortcutsBtn = document.createElement('button');
+    shortcutsBtn.id = 'usos-shortcuts-nav-btn';
+    shortcutsBtn.type = 'button';
+    shortcutsBtn.className = 'usos-shortcuts-btn';
+    shortcutsBtn.title = 'Skróty klawiszowe (Alt+? lub ?) • USOSweb 2.0';
+    shortcutsBtn.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+        <line x1="6" y1="8" x2="6" y2="8"></line>
+        <line x1="10" y1="8" x2="10" y2="8"></line>
+        <line x1="14" y1="8" x2="14" y2="8"></line>
+        <line x1="18" y1="8" x2="18" y2="8"></line>
+        <line x1="6" y1="12" x2="6" y2="12"></line>
+        <line x1="18" y1="12" x2="18" y2="12"></line>
+        <line x1="7" y1="16" x2="17" y2="16"></line>
+      </svg>
+    `;
+    shortcutsBtn.addEventListener('click', toggleShortcutsModal);
+    navRight.appendChild(shortcutsBtn);
 
     // Przycisk Dark Mode
     const themeBtn = document.createElement('button');
@@ -815,6 +839,122 @@
         color: inherit !important;
         font-family: var(--font-sans) !important;
       }
+    `,
+    moduleLinkTile: `
+      :host {
+        display: block !important;
+        background: var(--bg-card, #111827) !important;
+        background-color: var(--bg-card, #111827) !important;
+        border: 1px solid var(--border-default, #26334d) !important;
+        border-radius: var(--radius-lg, 12px) !important;
+        box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1)) !important;
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, background-color 0.2s ease !important;
+        overflow: hidden !important;
+      }
+      :host(:hover) {
+        background: var(--bg-card-hover, #1e293b) !important;
+        background-color: var(--bg-card-hover, #1e293b) !important;
+        border-color: var(--primary, #3b82f6) !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--primary, #3b82f6) !important;
+        transform: translateY(-2px) !important;
+      }
+      :host > a {
+        display: block !important;
+        text-decoration: none !important;
+        color: inherit !important;
+        width: 100% !important;
+        height: 100% !important;
+        box-sizing: border-box !important;
+      }
+      :host > a:focus-visible {
+        outline: 2px solid var(--primary, #3b82f6) !important;
+        outline-offset: -2px !important;
+        border-radius: var(--radius-lg, 12px) !important;
+      }
+      :host > a > div {
+        display: flex !important;
+        align-items: flex-start !important;
+        padding: 1.25rem 1rem !important;
+        gap: 1rem !important;
+        box-sizing: border-box !important;
+        background: transparent !important;
+        background-color: transparent !important;
+      }
+      #icon {
+        width: 56px !important;
+        height: 56px !important;
+        min-width: 56px !important;
+        flex-shrink: 0 !important;
+        background: var(--primary, #3b82f6) !important;
+        background-color: var(--primary, #3b82f6) !important;
+        -webkit-mask-size: 48px 48px !important;
+        mask-size: 48px 48px !important;
+        -webkit-mask-position: center !important;
+        mask-position: center !important;
+        border-radius: 8px !important;
+        transition: transform 0.2s ease, background-color 0.2s ease !important;
+      }
+      :host(:hover) #icon {
+        transform: scale(1.08) !important;
+        background: var(--primary-hover, #60a5fa) !important;
+        background-color: var(--primary-hover, #60a5fa) !important;
+      }
+      #content {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        background: transparent !important;
+        background-color: transparent !important;
+      }
+      #title ::slotted(*) {
+        font-family: var(--font-sans) !important;
+        font-size: 1.05rem !important;
+        font-weight: 600 !important;
+        color: var(--text-main, #f8fafc) !important;
+        margin-top: 0 !important;
+        margin-bottom: 0.35rem !important;
+        transition: color 0.15s ease !important;
+      }
+      :host(:hover) #title ::slotted(*) {
+        color: var(--primary, #3b82f6) !important;
+      }
+      #text ::slotted(*) {
+        font-family: var(--font-sans) !important;
+        font-size: 0.85rem !important;
+        line-height: 1.45 !important;
+        color: var(--text-muted, #94a3b8) !important;
+      }
+      *:not(slot) {
+        border-color: var(--border-default) !important;
+      }
+    `,
+    moduleLinkTileContainer: `
+      :host {
+        display: flex !important;
+        flex-flow: row wrap !important;
+        justify-content: flex-start !important;
+        gap: 1.25rem !important;
+        margin: 0 !important;
+        padding: 0.5rem 0 !important;
+      }
+      :host ::slotted(usos-module-link-tile) {
+        min-width: 280px !important;
+        flex: 1 1 calc(33.333% - 1.25rem) !important;
+        max-width: calc(33.333% - 0.85rem) !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+      }
+      @media (max-width: 1100px) {
+        :host ::slotted(usos-module-link-tile) {
+          flex: 1 1 calc(50% - 1.25rem) !important;
+          max-width: calc(50% - 0.65rem) !important;
+        }
+      }
+      @media (max-width: 680px) {
+        :host ::slotted(usos-module-link-tile) {
+          flex: 1 1 100% !important;
+          max-width: 100% !important;
+        }
+      }
     `
   };
 
@@ -943,6 +1083,12 @@
       if (tag === 'timetable-entry') {
         injectShadowCSS(root, 'entry', SHADOW_CSS.entry);
       }
+      if (tag === 'usos-module-link-tile') {
+        injectShadowCSS(root, 'moduleLinkTile', SHADOW_CSS.moduleLinkTile);
+      }
+      if (tag === 'usos-module-link-tile-container') {
+        injectShadowCSS(root, 'moduleLinkTileContainer', SHADOW_CSS.moduleLinkTileContainer);
+      }
 
       if (root.querySelector('input:not([type="hidden"]), textarea, select')) {
         injectShadowCSS(root, 'inputs', SHADOW_CSS.inputs);
@@ -961,6 +1107,7 @@
       modernizeShadowComponents();
       modernizeUpcomingClassBanner();
       modernizeLoginPage();
+      modernizeStudentPortal();
       modernizeFooter();
       const sched = document.querySelector('.usos-home-schedule-widget');
       if (sched) {
@@ -3704,13 +3851,15 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
     }
 
     if (catCompanionBox) {
-      const mediaWrap = catCompanionBox.querySelector('.usos-cat-media-wrap');
-      if (mediaWrap) {
-        mediaWrap.style.cursor = 'pointer';
-        mediaWrap.addEventListener('click', () => {
-          updateCatUI(activeCatIdx + 1);
-        });
-      }
+      catCompanionBox.style.cursor = 'pointer';
+      catCompanionBox.addEventListener('click', (e) => {
+        if (e.target.closest('button, a')) return;
+        catCompanionBox.classList.add('is-clicking');
+        setTimeout(() => catCompanionBox.classList.remove('is-clicking'), 300);
+        updateCatUI(activeCatIdx + 1);
+        spawnPurrSparkle(catCompanionBox);
+        showUsosToast('🐾 Kotek mruczy z zadowoleniem!', '🐱', 1600);
+      });
     }
 
     if (refreshBtn) {
@@ -5260,6 +5409,455 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
   }
 
   /* ==========================================================================
+     6h. PORTAL DLA STUDENTÓW I WYSZUKIWARKA MODUŁÓW (DLA_STUD / KATALOG)
+     ========================================================================== */
+
+  function modernizeStudentPortal() {
+    if (!isExtensionEnabled) return;
+
+    const container = document.querySelector('usos-module-link-tile-container');
+    if (!container) return;
+
+    // Pobierz wszystkie kafelki modułów
+    const tiles = Array.from(container.querySelectorAll('usos-module-link-tile'));
+    if (tiles.length === 0) return;
+
+    // Dodaj nowoczesny pasek wyszukiwania i filtrów jeśli jeszcze nie istnieje
+    let filterBar = document.getElementById('usos-module-search-filter');
+    if (!filterBar) {
+      filterBar = document.createElement('div');
+      filterBar.id = 'usos-module-search-filter';
+      filterBar.className = 'usos-module-search-filter usos-modern-only';
+      filterBar.innerHTML = `
+        <div class="usos-module-search-header">
+          <div class="usos-module-search-title-wrap">
+            <div class="usos-module-search-icon-badge">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+            </div>
+            <div>
+              <h2 class="usos-module-search-title">Moduły i Usługi USOS</h2>
+              <p class="usos-module-search-subtitle">Szybki dostęp do spraw studenckich, rejestracji, ocen i wniosków</p>
+            </div>
+          </div>
+          <div class="usos-module-search-badges">
+            <span class="usos-module-count-badge" id="usos-module-count-badge">${tiles.length} modułów</span>
+          </div>
+        </div>
+
+        <div class="usos-module-search-input-row">
+          <div class="usos-module-search-input-wrap">
+            <svg class="usos-module-search-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              id="usos-module-search-input"
+              class="usos-module-search-input"
+              placeholder="🔍 Szukaj modułu (np. oceny, rejestracja, stypendia, dyplomy, podania)..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button type="button" id="usos-module-search-clear" class="usos-module-search-clear" title="Wyczyść filtr (Esc)" style="display: none;">
+              ✕
+            </button>
+          </div>
+          <div class="usos-module-quick-tags">
+            <button type="button" class="usos-module-tag-btn" data-query="oceny">⭐ Oceny</button>
+            <button type="button" class="usos-module-tag-btn" data-query="rejestracj">📝 Rejestracje</button>
+            <button type="button" class="usos-module-tag-btn" data-query="stypend">💰 Stypendia</button>
+            <button type="button" class="usos-module-tag-btn" data-query="podpie">📑 Podpięcia</button>
+            <button type="button" class="usos-module-tag-btn" data-query="plan">📅 Plany</button>
+            <button type="button" class="usos-module-tag-btn" data-query="dyplom">🎓 Dyplomy</button>
+          </div>
+        </div>
+      `;
+
+      container.parentNode.insertBefore(filterBar, container);
+
+      // Element pustego stanu
+      let emptyState = document.getElementById('usos-modules-empty-state');
+      if (!emptyState) {
+        emptyState = document.createElement('div');
+        emptyState.id = 'usos-modules-empty-state';
+        emptyState.className = 'usos-modules-empty-state';
+        emptyState.style.display = 'none';
+        emptyState.innerHTML = `
+          <div class="usos-modules-empty-icon">🔍</div>
+          <div class="usos-modules-empty-title">Nie znaleziono modułu</div>
+          <p class="usos-modules-empty-desc">Żaden moduł nie pasuje do wpisanej frazy. Spróbuj użyć innego słowa kluczowego.</p>
+          <button type="button" class="usos-btn-clear-empty-filter">Pokaż wszystkie moduły</button>
+        `;
+        container.parentNode.insertBefore(emptyState, container.nextSibling);
+
+        emptyState.querySelector('.usos-btn-clear-empty-filter')?.addEventListener('click', () => {
+          const input = document.getElementById('usos-module-search-input');
+          if (input) {
+            input.value = '';
+            input.dispatchEvent(new Event('input'));
+            input.focus();
+          }
+        });
+      }
+
+      // Logika filtrowania z normalizacją polskich znaków
+      const inputEl = filterBar.querySelector('#usos-module-search-input');
+      const clearBtn = filterBar.querySelector('#usos-module-search-clear');
+      const countBadge = filterBar.querySelector('#usos-module-count-badge');
+      const tagBtns = filterBar.querySelectorAll('.usos-module-tag-btn');
+
+      const normalizeStr = (str) => {
+        return (str || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/ł/g, 'l');
+      };
+
+      const filterModules = (rawQuery) => {
+        const query = normalizeStr(rawQuery.trim());
+        if (clearBtn) clearBtn.style.display = query ? 'flex' : 'none';
+
+        let visibleCount = 0;
+        const total = tiles.length;
+
+        tiles.forEach((tile) => {
+          const title = normalizeStr(tile.querySelector('[slot="title"]')?.textContent || '');
+          const text = normalizeStr(tile.querySelector('[slot="text"]')?.textContent || '');
+          const href = normalizeStr(tile.getAttribute('href') || '');
+
+          const matches = !query || title.includes(query) || text.includes(query) || href.includes(query);
+          tile.style.display = matches ? '' : 'none';
+          if (matches) visibleCount++;
+        });
+
+        if (countBadge) {
+          if (!query) {
+            countBadge.textContent = `${total} modułów`;
+            countBadge.classList.remove('is-filtering');
+          } else {
+            countBadge.textContent = `Wyniki: ${visibleCount} z ${total}`;
+            countBadge.classList.add('is-filtering');
+          }
+        }
+
+        if (emptyState) {
+          emptyState.style.display = visibleCount === 0 ? 'flex' : 'none';
+        }
+
+        // Zaznaczanie aktywnego taga
+        tagBtns.forEach((btn) => {
+          const btnQuery = normalizeStr(btn.dataset.query || '');
+          btn.classList.toggle('active', Boolean(query && query.includes(btnQuery)));
+        });
+      };
+
+      inputEl?.addEventListener('input', (e) => {
+        filterModules(e.target.value);
+      });
+
+      inputEl?.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          inputEl.value = '';
+          filterModules('');
+          inputEl.blur();
+        }
+      });
+
+      clearBtn?.addEventListener('click', () => {
+        if (inputEl) {
+          inputEl.value = '';
+          filterModules('');
+          inputEl.focus();
+        }
+      });
+
+      tagBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const query = btn.dataset.query || '';
+          if (inputEl) {
+            if (inputEl.value.trim().toLowerCase() === query.toLowerCase()) {
+              inputEl.value = '';
+              filterModules('');
+            } else {
+              inputEl.value = query;
+              filterModules(query);
+              inputEl.focus();
+            }
+          }
+        });
+      });
+    }
+  }
+
+  /* ==========================================================================
+     6i. GLOBALNE USPRAWNIENIA: SKRÓTY, TOASTY, SCROLL-TO-TOP, CLICK-TO-COPY
+     ========================================================================== */
+
+  let isGlobalEnhancementsInitialized = false;
+
+  function initGlobalEnhancements() {
+    if (isGlobalEnhancementsInitialized) return;
+    isGlobalEnhancementsInitialized = true;
+
+    initBackToTopButton();
+    initKeyboardShortcuts();
+    initShortcutsModal();
+    initRoomClickToCopy();
+  }
+
+  function showUsosToast(message, icon = '✨', duration = 2400) {
+    let container = document.getElementById('usos-toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'usos-toast-container';
+      container.className = 'usos-toast-container usos-modern-only';
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'usos-toast';
+    toast.innerHTML = `
+      <span class="usos-toast-icon">${icon}</span>
+      <span class="usos-toast-message">${escapeHtml(message)}</span>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('is-showing');
+    }, 10);
+
+    setTimeout(() => {
+      toast.classList.remove('is-showing');
+      toast.classList.add('is-hiding');
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+
+  function initBackToTopButton() {
+    if (document.getElementById('usos-back-to-top')) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'usos-back-to-top';
+    btn.type = 'button';
+    btn.className = 'usos-back-to-top usos-modern-only';
+    btn.title = 'Wróć na górę strony';
+    btn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="18 15 12 9 6 15"></polyline>
+      </svg>
+    `;
+
+    btn.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    document.body.appendChild(btn);
+
+    let scrollTicking = false;
+    window.addEventListener('scroll', () => {
+      if (!scrollTicking) {
+        window.requestAnimationFrame(() => {
+          if (window.scrollY > 300) {
+            btn.classList.add('is-visible');
+          } else {
+            btn.classList.remove('is-visible');
+          }
+          scrollTicking = false;
+        });
+        scrollTicking = true;
+      }
+    }, { passive: true });
+  }
+
+  function initShortcutsModal() {
+    if (document.getElementById('usos-shortcuts-modal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'usos-shortcuts-modal';
+    modal.className = 'usos-shortcuts-modal-backdrop usos-modern-only';
+    modal.style.display = 'none';
+    modal.innerHTML = `
+      <div class="usos-shortcuts-modal-card" role="dialog" aria-modal="true" aria-labelledby="usos-shortcuts-title">
+        <div class="usos-shortcuts-header">
+          <div class="usos-shortcuts-title-wrap">
+            <span class="usos-shortcuts-icon">⌨️</span>
+            <div>
+              <h2 id="usos-shortcuts-title" class="usos-shortcuts-title">Skróty klawiszowe USOSweb 2.0</h2>
+              <p class="usos-shortcuts-subtitle">Nawiguj po systemie jak profesjonalista</p>
+            </div>
+          </div>
+          <button type="button" class="usos-shortcuts-close" title="Zamknij (Esc)">✕</button>
+        </div>
+
+        <div class="usos-shortcuts-grid">
+          <div class="usos-shortcut-item">
+            <span class="usos-shortcut-desc">Mój USOSweb (Strona główna)</span>
+            <div class="usos-shortcut-keys"><kbd>Alt</kbd> + <kbd>H</kbd></div>
+          </div>
+          <div class="usos-shortcut-item">
+            <span class="usos-shortcut-desc">Dla Studentów (Katalog usług)</span>
+            <div class="usos-shortcut-keys"><kbd>Alt</kbd> + <kbd>S</kbd></div>
+          </div>
+          <div class="usos-shortcut-item">
+            <span class="usos-shortcut-desc">Pełny plan zajęć</span>
+            <div class="usos-shortcut-keys"><kbd>Alt</kbd> + <kbd>P</kbd></div>
+          </div>
+          <div class="usos-shortcut-item">
+            <span class="usos-shortcut-desc">Oceny i protokoły</span>
+            <div class="usos-shortcut-keys"><kbd>Alt</kbd> + <kbd>O</kbd></div>
+          </div>
+          <div class="usos-shortcut-item">
+            <span class="usos-shortcut-desc">Kalendarz rejestracji</span>
+            <div class="usos-shortcut-keys"><kbd>Alt</kbd> + <kbd>R</kbd></div>
+          </div>
+          <div class="usos-shortcut-item">
+            <span class="usos-shortcut-desc">Przełącznik motywu (Dark Mode)</span>
+            <div class="usos-shortcut-keys"><kbd>Alt</kbd> + <kbd>D</kbd></div>
+          </div>
+          <div class="usos-shortcut-item">
+            <span class="usos-shortcut-desc">Fokus na wyszukiwarkę modułów</span>
+            <div class="usos-shortcut-keys"><kbd>Alt</kbd> + <kbd>/</kbd></div>
+          </div>
+          <div class="usos-shortcut-item">
+            <span class="usos-shortcut-desc">Pokaż to okno pomocy</span>
+            <div class="usos-shortcut-keys"><kbd>?</kbd></div>
+          </div>
+          <div class="usos-shortcut-item">
+            <span class="usos-shortcut-desc">Zamknij okno / wyczyść</span>
+            <div class="usos-shortcut-keys"><kbd>Esc</kbd></div>
+          </div>
+        </div>
+
+        <div class="usos-shortcuts-footer">
+          <span>USOSweb 2.0 • Made with ❤️ by <a href="https://github.com/BorysiaczekUwU" target="_blank" rel="noopener noreferrer">BorysiaczekUwU</a></span>
+          <button type="button" class="usos-shortcuts-btn-ok">Rozumiem</button>
+        </div>
+      </div>
+    `;
+
+    const closeModal = () => {
+      modal.classList.remove('is-open');
+      setTimeout(() => {
+        modal.style.display = 'none';
+      }, 200);
+    };
+
+    modal.querySelector('.usos-shortcuts-close')?.addEventListener('click', closeModal);
+    modal.querySelector('.usos-shortcuts-btn-ok')?.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    document.body.appendChild(modal);
+  }
+
+  function toggleShortcutsModal() {
+    const modal = document.getElementById('usos-shortcuts-modal');
+    if (!modal) return;
+    if (modal.classList.contains('is-open')) {
+      modal.classList.remove('is-open');
+      setTimeout(() => { modal.style.display = 'none'; }, 200);
+    } else {
+      modal.style.display = 'flex';
+      setTimeout(() => { modal.classList.add('is-open'); }, 10);
+    }
+  }
+
+  function initKeyboardShortcuts() {
+    window.addEventListener('keydown', (e) => {
+      // Ignoruj gdy użytkownik pisze w polach formularzy
+      const tag = (document.activeElement?.tagName || '').toLowerCase();
+      const isInput = tag === 'input' || tag === 'textarea' || tag === 'select' || document.activeElement?.isContentEditable;
+
+      const modal = document.getElementById('usos-shortcuts-modal');
+      const isModalOpen = modal && modal.classList.contains('is-open');
+
+      if (e.key === 'Escape' && isModalOpen) {
+        toggleShortcutsModal();
+        e.preventDefault();
+        return;
+      }
+
+      if (!isInput && e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        toggleShortcutsModal();
+        e.preventDefault();
+        return;
+      }
+
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        const key = e.key.toLowerCase();
+        if (key === 'h') {
+          e.preventDefault();
+          window.location.href = '/kontroler.php?_action=home/index';
+        } else if (key === 's') {
+          e.preventDefault();
+          window.location.href = '/kontroler.php?_action=dla_stud/index';
+        } else if (key === 'p') {
+          e.preventDefault();
+          window.location.href = '/kontroler.php?_action=home/plan';
+        } else if (key === 'o') {
+          e.preventDefault();
+          window.location.href = '/kontroler.php?_action=dla_stud/studia/oceny/index';
+        } else if (key === 'r') {
+          e.preventDefault();
+          window.location.href = '/kontroler.php?_action=dla_stud/rejestracja/kalendarz';
+        } else if (key === 'd') {
+          e.preventDefault();
+          toggleDarkMode();
+          showUsosToast(isDarkMode ? '🌙 Włączono tryb ciemny' : '☀️ Włączono tryb jasny', isDarkMode ? '🌙' : '☀️');
+        } else if (key === '/' || key === 'k') {
+          e.preventDefault();
+          const moduleInput = document.getElementById('usos-module-search-input');
+          if (moduleInput) {
+            moduleInput.focus();
+            moduleInput.select();
+          } else {
+            const genericSearch = document.querySelector('input[type="search"], input[name="szukaj"], input[name="q"], .usos-search-input');
+            if (genericSearch) genericSearch.focus();
+          }
+        }
+      }
+    });
+  }
+
+  function initRoomClickToCopy() {
+    document.addEventListener('click', (e) => {
+      const roomEl = e.target.closest('.usos-upcoming-room-chip, .usos-plan-cell-room, .usos-entry-room');
+      if (!roomEl) return;
+
+      const roomText = (roomEl.textContent || '').replace(/^sala\s*:?/i, '').trim();
+      if (!roomText) return;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(roomText).then(() => {
+          showUsosToast(`Skopiowano salę: ${roomText}`, '📋');
+        }).catch(() => { });
+      }
+    });
+  }
+
+  function spawnPurrSparkle(container) {
+    if (!container) return;
+    const sparkles = ['🐾', '✨', '⭐', '❤️', '🎓'];
+    const char = sparkles[Math.floor(Math.random() * sparkles.length)];
+
+    const spark = document.createElement('div');
+    spark.className = 'usos-cat-sparkle-float';
+    spark.textContent = char;
+    spark.style.left = `${Math.floor(Math.random() * 60) + 20}%`;
+    spark.style.top = `${Math.floor(Math.random() * 40) + 20}%`;
+
+    container.appendChild(spark);
+    setTimeout(() => spark.remove(), 1000);
+  }
+
+  /* ==========================================================================
      7. ZARZĄDZANIE TRYBEM CIEMNYM (TOGGLE)
      ========================================================================== */
 
@@ -5291,8 +5889,13 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
           target.id === 'usos-schedule-filter-bar' ||
           target.id === 'usos-home-dashboard' ||
           target.id === 'usos-modern-maintenance' ||
+          target.id === 'usos-module-search-filter' ||
+          target.id === 'usos-shortcuts-modal' ||
+          target.id === 'usos-back-to-top' ||
+          target.id === 'usos-toast-container' ||
+          target.id === 'usos-modules-empty-state' ||
           target.closest?.(
-            '#usos-modern-navbar, #usos-schedule-filter-bar, #usos-home-dashboard, #usos-modern-maintenance, .usos-home-hero, usos-timetable, timetable-entry, timetable-day, .usos-modern-breadcrumbs, .usos-table-wrapper, .usos-registration-card'
+            '#usos-modern-navbar, #usos-schedule-filter-bar, #usos-home-dashboard, #usos-modern-maintenance, #usos-module-search-filter, #usos-shortcuts-modal, #usos-back-to-top, #usos-toast-container, #usos-modules-empty-state, .usos-home-hero, usos-timetable, timetable-entry, timetable-day, .usos-modern-breadcrumbs, .usos-table-wrapper, .usos-registration-card'
           ) ||
           target.classList?.contains('usos-badge') ||
           target.classList?.contains('usos-entry-card-wrap') ||
@@ -5304,7 +5907,10 @@ ${room ? `Sala: ${room}\n` : ''}${teachers && teachers.length ? `Prowadzący: ${
           target.classList?.contains('usos-reg-cta-btn') ||
           target.classList?.contains('usos-sched-tab-btn') ||
           target.classList?.contains('usos-search-tab-pill') ||
-          target.classList?.contains('usos-group-pill')
+          target.classList?.contains('usos-group-pill') ||
+          target.classList?.contains('usos-toast') ||
+          target.classList?.contains('usos-cat-sparkle-float') ||
+          target.classList?.contains('usos-module-tag-btn')
         ) {
           continue;
         }
